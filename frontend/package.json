@@ -43,7 +43,7 @@
     "sharp": "^0.35.3",
     "shpjs": "^6.2.0",
     "swr": "^2.5.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@cypress/grep": "^6.0.2",
