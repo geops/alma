@@ -127,7 +127,7 @@ export default function DatePicker({
     },
   });
 
-  const fieldState = getFieldState(name);
+  const fieldState = getFieldState(name, formState);
 
   const errorClassName = fieldState?.error ? tw`border-red-3 bg-red-2` : "";
 

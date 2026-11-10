@@ -36,6 +36,38 @@ describe("Admin page for system settings", () => {
     cy.get("td").contains("1300001").should("exist");
   });
 
+  it("saves an integer Kompartimente limit", () => {
+    cy.setUser("admin");
+    cy.updateAdminSetting("ui.ablagerungen.maxKompartimente", "undefined");
+    cy.visit("/admin/system");
+    cy.wait("@InstanceSettings");
+
+    cy.get("td").contains("ui.ablagerungen.maxKompartimente").click();
+    cy.get("div[role=dialog] textarea").should("have.value", '"undefined"');
+    cy.get("div[role=dialog] textarea").type("{selectAll}1.5");
+    cy.get("button[type=submit]").click();
+    cy.get("button[data-test=ValidationPopover-button]").should("exist");
+    cy.get("div[role=dialog] textarea").type("{selectAll}1");
+    cy.get("button[type=submit]").click();
+    cy.wait("@UpdateInstanceSetting");
+    cy.get("div[role=dialog]").should("not.exist");
+    cy.get("td")
+      .contains("ui.ablagerungen.maxKompartimente")
+      .parent()
+      .should("contain", "1");
+    cy.get("td").contains("ui.ablagerungen.maxKompartimente").click();
+    cy.get("div[role=dialog] textarea").type('{selectAll}"undefined"');
+    cy.get("button[type=submit]").click();
+    cy.wait("@UpdateInstanceSetting");
+    cy.get("div[role=dialog]").should("not.exist");
+    cy.get("td")
+      .contains("ui.ablagerungen.maxKompartimente")
+      .parent()
+      .find("td")
+      .last()
+      .should("have.text", '"undefined"');
+  });
+
   it("shows message for missing permissions", () => {
     cy.setUser("bearbeiten-geschaefte");
     cy.visit("/admin/system");

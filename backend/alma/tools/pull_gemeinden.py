@@ -46,7 +46,10 @@ def get_kanton_nummern(db: connection, kantone: list[str]) -> list[str]:
     cursor.close()
     if not rows:
         raise ValueError(f"Unknown kanton(s): {kantone}")
-    return [str(row[0]) for row in rows]
+    kantone_nummern = [str(row[0]) for row in rows]
+    if "" in kantone:
+        kantone_nummern.append("")
+    return kantone_nummern
 
 
 def wfs_row_matches_kantone(

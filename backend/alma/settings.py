@@ -64,6 +64,7 @@ class DebugSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="debug_")
 
     enable_e2e_test_user: bool = False
+    graphql_ide: bool = False
 
 
 class FieldMapping(BaseModel):
@@ -183,10 +184,16 @@ class InterlisExportSettings(BaseSettings):
     kbs_v1_5_name: str | None = None
     be_name: str | None = None
     vd_name: str | None = None
+    so_name: str | None = None
+    so_restricted_name: str | None = None
+    lu_name: str | None = None
     oereb_v2_0_directory: str | None = None
     kbs_v1_5_directory: str | None = None
     be_directory: str | None = None
     vd_directory: str | None = None
+    so_directory: str | None = None
+    so_restricted_directory: str | None = None
+    lu_directory: str | None = None
 
     ftp_lv95_ftp_server: str | None = None
     ftp_lv95_username: str | None = None
@@ -197,12 +204,18 @@ class InterlisExportSettings(BaseSettings):
     kbs_v1_5_query: str | None = None
     be_query: str | None = None
     vd_query: str | None = None
+    so_query: str | None = None
+    so_restricted_query: str | None = None
+    lu_query: str | None = None
 
     check_java: str | None = None
     check_ilivalidator_oereb_v2_0: bool | None = None
     check_ilivalidator_kbs_v1_5: bool | None = None
     check_ilivalidator_be: bool | None = None
     check_ilivalidator_vd: bool | None = None
+    check_ilivalidator_so: bool | None = None
+    check_ilivalidator_so_restricted: bool | None = None
+    check_ilivalidator_lu: bool | None = None
     upload: bool = False
 
 
@@ -251,10 +264,13 @@ class CombinedIdFactoryName(StrEnum):
     CANTON_INTERNAL_BFS_LFD_ABUB_DOT = "canton_internal_bfs_lfd_abub_dot"
     BFS_DEAE_LFD_HYPHEN = "bfs_deae_lfd_hyphen"
     BFS_LFD = "bfs_lfd"
+    AA_BFS_LFD_DOT = "aa_bfs_lfd_dot"
+    BFS_ABUS_LFD = "bfs_abus_lfd"
 
 
 class TeilstandortCombinedIdFactoryName(StrEnum):
-    NUMBER = "number"
+    DOT_NUMBER = "dot_number"
+    HYPHEN_NUMBER = "hyphen_number"
 
 
 class Settings(BaseSettings):
@@ -281,7 +297,7 @@ class Settings(BaseSettings):
         CombinedIdFactoryName.BFS_DBUS_LFD_WHITESPACES
     )
     teilstandort_combined_id_factory: TeilstandortCombinedIdFactoryName = (
-        TeilstandortCombinedIdFactoryName.NUMBER
+        TeilstandortCombinedIdFactoryName.DOT_NUMBER
     )
     height_api: HttpUrl | None = HttpUrl(
         "https://api3.geo.admin.ch/rest/services/height"

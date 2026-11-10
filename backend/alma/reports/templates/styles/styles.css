@@ -179,6 +179,13 @@ header > p {
     height: 2cm;
 }
 
+#department_ag {
+    font-size: 13px;
+    display: inline-block;
+    height: 2cm;
+    align-items: right;
+}
+
 h1 {
     font-size: 18px;
     padding-top: 1cm;

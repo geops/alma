@@ -1,4 +1,4 @@
-FROM node:22-alpine AS frontend
+FROM node:22.23.4-alpine AS frontend
 
 ARG NEXT_PUBLIC_VERSION="0.0.0"
 RUN echo "${NEXT_PUBLIC_VERSION}"

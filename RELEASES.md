@@ -1,3 +1,45 @@
+## Release 1.6.16
+
+- Update custom data for data migrations, validations, workflows, reports and interlis exports
+
+## Release 1.6.15
+
+- Update postgres anonymizer to version 3 to match postgres v 18
+
+## Release 1.6.13
+
+- update frontend dependencies (major)
+- Add option to disable graphql interface by default
+- lock file maintenance frontend dependencies
+
+## Release 1.6.12
+
+- Update custom data for workflows and interlis exports
+
+## Release 1.6.11
+
+- Fix github repo url
+
+## Release 1.6.10
+
+- update uv, node and other certificate-related dependencies
+- update brotli dependencies
+
+## Release 1.6.9
+
+- Add optional parameter to limit kompartimente for Ablagerung sites
+- Increase task filter to less than 4 weeks instead of 2
+
+## Release 1.6.8
+
+- Add contrast to active tool in the OLE toolbar
+- Sort betriebe by cadastre relevance
+- Add flag for rendering WMS baselayers as imageLayer
+
+## Release 1.6.7
+
+- Allow pulling communes that have no kanton assigned
+
 ## Release 1.6.6
 
 - Update custom data for migration and reports

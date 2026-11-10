@@ -31,6 +31,7 @@ export default function SidebarDialog({
       <DialogBackdrop className="bg-gray-7/40 fixed inset-0 backdrop-blur-xs" />
       <DialogPanel
         className={`${fonts} fixed inset-4 ml-auto flex w-96 flex-col rounded-xl bg-white p-4`}
+        data-test="SidebarDialog-panel"
       >
         <CloseButton className="absolute top-4 right-4">
           <XIcon className="text-gray-6" />

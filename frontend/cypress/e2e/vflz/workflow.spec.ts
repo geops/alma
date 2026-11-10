@@ -73,21 +73,29 @@ describe("Vflz Workflow Page", () => {
 
     cy.setUser("bearbeiten-geschaefte");
     cy.updateUserSetting("bearbeiten-geschaefte", "workflow.filter", "");
-    cy.visit("/vflz/1/workflow");
-    cy.wait("@VflzWorkflowLayout");
-    cy.get("div[data-test^=Workflow-item]").should("exist");
-    cy.get("div[data-test^=Workflow-item]").contains("Test Task").click();
-    cy.get("input[name=startDatum]").type(`{selectAll}${day}.${month}.2025`);
-    cy.get("input[name=endDatum]").type(`{selectAll}${day}.${month}.2025`);
-    cy.get("form[data-test=Workflow-taskForm] button[type='submit']").click({
-      force: true,
-    });
-    cy.get("div[data-test^=Workflow-item]")
-      .contains("Test Task")
-      .siblings()
-      .contains(
-        `Ende: ${day.toString().padStart(2, "0")}.${month.toString().padStart(2, "0")}.2025`,
-      );
+    cy.createVflz({ bezeichnung: "Workflow date validation" }).then(
+      (vflzId) => {
+        cy.visit(`/vflz/${vflzId}/workflow`);
+        cy.wait(["@VflzWorkflowLayout", "@VflzWorkflow"]);
+        cy.get("button[data-test=Workflow-startProzess]").click({
+          force: true,
+        });
+        cy.get("button[data-test=Workflow-createAUFGABE]").click();
+        cy.wait(["@createAufgabe", "@Task"]);
+        cy.get("input[name=startDatum]").type(
+          `{selectAll}${day}.${month}.2025`,
+        );
+        cy.get("input[name=endDatum]").type(`{selectAll}${day}.${month}.2025`);
+        cy.get("form[data-test=Workflow-taskForm] button[type='submit']").click(
+          {
+            force: true,
+          },
+        );
+        cy.get("div[data-test=Workflow-item-AUFGABE]").contains(
+          `Ende: ${day.toString().padStart(2, "0")}.${month.toString().padStart(2, "0")}.2025`,
+        );
+      },
+    );
   });
 
   it("can create and delete Notiz, Dokument, Aufgabe and start Prozess with max_per_entity only once", () => {

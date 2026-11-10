@@ -20,7 +20,6 @@ export default defineConfig({
 
   e2e: {
     baseUrl: "http://localhost",
-    experimentalMemoryManagement: true,
     numTestsKeptInMemory: 0, // Default is 50; set to 0 for large forms
     projectId: "shdtfb",
     setupNodeEvents(on, config) {

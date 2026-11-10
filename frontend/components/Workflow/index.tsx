@@ -288,6 +288,14 @@ export default function Workflow({
   const [pages, setPages] = useState<number[]>([]);
   const [geschaefte, setGeschaefte] = useState<WorkflowItemFragment[]>([]);
   const vflzIdRef = useRef<string>(vflzId);
+  const listContext = JSON.stringify([vflzId, filter, asTree, reverse, sortBy]);
+  const listContextRef = useRef(listContext);
+  const [paginationContext, setPaginationContext] = useState(listContext);
+
+  if (paginationContext !== listContext) {
+    setPaginationContext(listContext);
+    setPage(1);
+  }
 
   const updateSettingRef = useRef<typeof updateSetting>(updateSetting);
   const taskId = useMemo(() => {
@@ -322,8 +330,12 @@ export default function Workflow({
       const newResults = newGeschaefte.results ?? [];
       let appendDirection: "after" | "before" | "none" | "reset" = "none";
 
-      if (vflzIdRef.current !== vflzId) {
+      if (
+        vflzIdRef.current !== vflzId ||
+        listContextRef.current !== listContext
+      ) {
         vflzIdRef.current = vflzId;
+        listContextRef.current = listContext;
         appendDirection = "reset";
         setPages([newPage]);
       } else {
@@ -360,7 +372,7 @@ export default function Workflow({
       }
       setIsLoading(false);
     },
-    [vflzId],
+    [listContext, setGeschaefte, setIsLoading, setPage, setPages, vflzId],
   );
 
   const handleFailure = useCallback(() => {
@@ -373,7 +385,7 @@ export default function Workflow({
       setRequestedTaskId(undefined);
     }
     setIsLoading(false);
-  }, [redirectTo, requestedTaskId]);
+  }, [redirectTo, requestedTaskId, setIsLoading, setRequestedTaskId]);
 
   // [ALTLZGA-37] Select the same teilflaechen in the filter when loading the vflz
   // then make it the default filter.
@@ -466,7 +478,7 @@ export default function Workflow({
     setGeschaefte([]);
     setPages([]);
     setPage(1);
-  }, []);
+  }, [setGeschaefte, setIsLoading, setPage, setPages]);
 
   const reloadList = useCallback(
     (newTaskId?: string) => {
@@ -478,7 +490,7 @@ export default function Workflow({
       }
       void mutate(undefined, { revalidate: true });
     },
-    [mutate, redirectTo],
+    [mutate, redirectTo, setGeschaefte, setPage, setPages],
   );
 
   const containerRef = useInfiniteScroll(

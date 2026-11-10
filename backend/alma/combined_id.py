@@ -194,7 +194,7 @@ class BfsDBUSLfdWhitespacesFactory(FactoryTemplate):
     lfd_nummer_regex = "^[0-9]{2}$"
     standort_typ_map: dict[StandortTyp, str] = {
         StandortTyp.ABLAGERUNG: "D",
-        StandortTyp.BETRIEB: "B",
+        StandortTyp.BETRIEB: "S",
         StandortTyp.UNFALL: "U",
         StandortTyp.SCHIESSANLAGE: "S",
         StandortTyp.KINDERSPIELPLATZ_GRUENFLAECHE: "K",
@@ -480,7 +480,70 @@ class BfsLfdFactory(FactoryTemplate):
         return f"{stamm}{last_laufende_nummer + 1:0>4}"
 
 
-class TeilstandortWithNumbersFactory:
+class BfsAbusLfdFactory(FactoryTemplate):
+    lfd_nummer_regex = r"^[0-9]{4}$"
+    standort_typ_map: dict[StandortTyp, str] = {
+        StandortTyp.ABLAGERUNG: "A",
+        StandortTyp.BETRIEB: "B",
+        StandortTyp.UNFALL: "U",
+        StandortTyp.SCHIESSANLAGE: "S",
+        StandortTyp.KINDERSPIELPLATZ_GRUENFLAECHE: "K",
+        StandortTyp.PFAS: "P",
+    }
+    """Erzeugt Standortnummern nach diesem Muster: <gemeinde-bfs-nummer><standort-typ><laufende Nummer 4 stellig>.
+
+    Beispiel: es wird ein Standort in der Gemeinde 'Bern' mit der BfS-Nummer 123 erzeugt.
+    Dann ist die generierte Standortnummer: 123A0001.
+    """
+
+    @classmethod
+    def format(
+        cls,
+        session: Session,
+        vftyp: code_models.Code,
+        gemeinde: gem_models.Gemeinde | None = None,
+        ktu: vflz_models.KTU | None = None,
+        flugplatz: fp_models.Flugplatz | None = None,
+    ):
+        assert gemeinde
+        standort_typ = StandortTyp(vftyp.code)
+        stamm = f"{gemeinde.bfs_nummer:0>4}{cls.standort_typ_map[standort_typ]}"
+        suffixes = get_suffixes(session, stamm)
+        last_laufende_nummer = get_last_laufende_nummer(
+            suffixes, cls.lfd_nummer_regex, False
+        )
+        return f"{stamm}{last_laufende_nummer + 1:0>4}"
+
+class AaBfsLfdDotFactory(FactoryTemplate):
+    lfd_nummer_regex = r"^[0-9]{4}$"
+    """Erzeugt Standortnummern nach diesem Muster: AA<gemeinde-bfs-nummer>.<laufende Nummer 4 stellig>.
+
+    Die laufende Nummer hat Lücken. Vorgeschlagen wird die Nummer nach der höchsten vorhandenen.
+    Teilstandorte (z.B. AA4001.0278-1) werden bei der Ermittlung der höchsten Nummer ignoriert.
+
+    Beispiel: es wird ein Standort in der Gemeinde mit der BfS-Nummer 4001 erzeugt,
+    die höchste vorhandene Nummer ist 0277. Dann ist die generierte Standortnummer: AA4001.0278.
+    """
+
+    @classmethod
+    def format(
+        cls,
+        session: Session,
+        vftyp: code_models.Code,
+        gemeinde: gem_models.Gemeinde | None = None,
+        ktu: vflz_models.KTU | None = None,
+        flugplatz: fp_models.Flugplatz | None = None,
+    ):
+        assert gemeinde
+        stamm = f"AA{gemeinde.bfs_nummer}."
+        suffixes = get_suffixes(session, stamm)
+        last_laufende_nummer = get_last_laufende_nummer(
+            suffixes, cls.lfd_nummer_regex, False
+        )
+        return f"{stamm}{last_laufende_nummer + 1:0>4}"
+
+
+class TeilstandortWithDotNumberFactory:
     lfd_nummer_regex = r"^\.[0-9]*$"
 
     @classmethod
@@ -488,6 +551,21 @@ class TeilstandortWithNumbersFactory:
         suffixes = get_suffixes(session, vflz_combined_id)
         last_laufende_nummer = get_last_laufende_nummer(suffixes, cls.lfd_nummer_regex)
         return f"{vflz_combined_id}.{last_laufende_nummer + 1:0>2}"
+
+
+class TeilstandortWithHyphenNumberFactory:
+    """Hängt an die Standortnummer des Hauptstandorts eine fortlaufende Nummer an: <standortnummer>-<nummer>.
+
+    Beispiel: AA4001.0278-1, AA4001.0278-2
+    """
+
+    lfd_nummer_regex = r"^-[0-9]*$"
+
+    @classmethod
+    def format(cls, session: Session, vflz_combined_id: str) -> str:
+        suffixes = get_suffixes(session, vflz_combined_id)
+        last_laufende_nummer = get_last_laufende_nummer(suffixes, cls.lfd_nummer_regex)
+        return f"{vflz_combined_id}-{last_laufende_nummer + 1}"
 
 
 COMBINED_ID_FACTORY_MAPPING: dict[CombinedIdFactoryName, type[FactoryTemplate]] = {
@@ -501,10 +579,14 @@ COMBINED_ID_FACTORY_MAPPING: dict[CombinedIdFactoryName, type[FactoryTemplate]] 
     CombinedIdFactoryName.BFS_DEAE_LFD_HYPHEN: BfsDeaeLfdHyphenFactory,
     CombinedIdFactoryName.BFS_LFD: BfsLfdFactory,
     CombinedIdFactoryName.INTERNAL_BFS_ABUS_LFD_UNDERSCORE_TWICE: InternalBfsABUSLfdUnderscoreFactoryTwice,
+    CombinedIdFactoryName.BFS_ABUS_LFD: BfsAbusLfdFactory,
+    CombinedIdFactoryName.AA_BFS_LFD_DOT: AaBfsLfdDotFactory,
+
 }
 
 TEILSTANDORT_ID_FACTORY_MAPPING = {
-    TeilstandortCombinedIdFactoryName.NUMBER: TeilstandortWithNumbersFactory
+    TeilstandortCombinedIdFactoryName.DOT_NUMBER: TeilstandortWithDotNumberFactory,
+    TeilstandortCombinedIdFactoryName.HYPHEN_NUMBER: TeilstandortWithHyphenNumberFactory,
 }
 
 

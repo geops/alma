@@ -66,6 +66,60 @@ docker container prune                      # remove stopped containers
 
 ## Running the tests
 
+### Dependency compatibility
+
+Keep TypeScript on `~6.0.3`: the current `typescript-eslint` tooling requires
+TypeScript `<6.1.0`. TypeScript 7 causes ESLint to crash in `ts-api-utils` while
+loading the configuration. When upgrading the lint tooling to support newer
+TypeScript versions, update both `package.json` and the TypeScript constraint
+in `../renovate.json`.
+
+TanStack Table stays on v8 until the search results table is migrated to the v9
+API. Its major version is also constrained in `../renovate.json`.
+
+GraphQL Code Generator stays on CLI v6 and TypeScript plugins v5 to preserve the
+generated type contract. The newer majors generate conflicting enum definitions
+and change operation types with the current configuration; their versions are
+constrained in `../renovate.json` until that migration is completed.
+
+The TypeScript configuration forces module detection so Next.js development and
+production type validators do not declare conflicting global types.
+
+### Cypress
+
+Use `pnpm cypress:run --spec cypress/e2e/search.spec.ts` to run a targeted E2E
+spec; arguments are forwarded directly to Cypress. Use `pnpm cypress:run:all`
+to run the component suite followed by the E2E suite.
+
+Cypress 16 manages browser memory by default; the removed
+`experimentalMemoryManagement` option is no longer needed.
+
+Component tests run in Chrome, including in CI, because the map tests need
+WebGL and Cypress's default Electron browser fails to initialize it in the test
+environment. Install Chrome locally and run `pnpm cypress:run:component` from
+`frontend/`, or use `make -C frontend cypress-component-tests` from the repository
+root to run them in the Cypress container, which already includes Chrome.
+
+### Frontend checks
+
+Run the `frontend_checks` validation commands from this directory:
+
+```bash
+pnpm exec prettier --check .
+pnpm codegen
+pnpm lint
+pnpm tsc
+pnpm build
+```
+
+To run the OpenLayers editor control tests:
+
+```bash
+pnpm exec cypress run --component --spec packages/ole/control/Control.test.tsx
+```
+
+### Cypress tests
+
 To run the Cypress tests (as used in CI), set the required environment variable
 in your `backend/env_file`:
 

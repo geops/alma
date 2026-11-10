@@ -522,7 +522,10 @@ function Editor({
         });
         if (features.length === 0 && vflz?.zentroid) {
           // restore original zentroid if no features are left after selection
-          features.push(new Feature(geoJSON.readGeometry(vflz.zentroid)));
+          const geometry = geoJSON.readGeometry(vflz.zentroid);
+          if (geometry) {
+            features.push(new Feature(geometry));
+          }
         }
       }
       const input = featuresToInput(geometryType, features);

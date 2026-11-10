@@ -46,6 +46,24 @@ describe("MapLayerTree component", () => {
     cy.get("ul[data-test=MapLayerTree-list] li").should("have.length", 0);
   });
 
+  it("highlights active map controls", () => {
+    cy.mount(
+      <Map className="h-screen">
+        <MapLayerTree settingName="editor" />
+      </Map>,
+    );
+    ["MapLayerTree-toggle", "MapLayerTree-info"].forEach((control) => {
+      cy.get(`button[data-test=${control}]`)
+        .should("have.css", "color", "rgb(71, 84, 103)")
+        .click()
+        .should("have.css", "background-color", "rgb(223, 241, 251)")
+        .and("have.css", "color", "rgb(0, 134, 201)")
+        .click()
+        .should("have.css", "color", "rgb(71, 84, 103)")
+        .and("not.have.css", "background-color", "rgb(223, 241, 251)");
+    });
+  });
+
   it("renders nested tree with readonly group layer and hidden sub layer", () => {
     cy.mount(
       <Map className="h-screen">

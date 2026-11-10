@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path
 
 import business_workflow_manager.models as wf_models
+import httpx2
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -58,6 +59,7 @@ from alma.models.bem import (
     BemerkungUmweltschaden,
     BemerkungUnfall,
 )
+from alma.models.vflz import fetch_height
 
 pytestmark = [
     # Fixture required by all tests in this module
@@ -1563,6 +1565,31 @@ def test_betriebe_are_ordered_by_timestamp_and_id_if_not_provided(session):
     ]
 
 
+def test_betriebe_are_ordered_by_relevance_then_timestamp(session):
+    vflz = make_vflz(session, "My Site")
+    betriebe = []
+    for relevant, start_date in [
+        (False, date(2024, 1, 1)),
+        (True, date(2000, 1, 1)),
+        (None, date(2025, 1, 1)),
+        (True, date(2020, 1, 1)),
+        (True, None),
+        (False, None),
+        (None, None),
+    ]:
+        betrieb = make_betrieb(session, vflz)
+        betrieb.relevant = relevant
+        betrieb.zeitraum_von = start_date
+        betriebe.append(betrieb)
+
+    session.flush()
+    session.expire(vflz, ["betriebe"])
+
+    assert [betrieb.intb_id for betrieb in vflz.betriebe] == [
+        betriebe[index].intb_id for index in [3, 1, 4, 2, 0, 5, 6]
+    ]
+
+
 def test_zeitraum_ordering_betriebe_one_with_vonjahr_one_without(session):
     vflz = make_vflz(session, "My Site")
     betrieb1 = make_betrieb(session, vflz)
@@ -1975,3 +2002,11 @@ def test_get_kinderspielplatze_gruenflaechen_from_given_vflz_id(session, run_que
             ]
         }
     }
+
+
+def test_height_raises_error_results_in_zero_height_returned(monkeypatch):
+    def mock_get(*args, **kwargs):
+        raise httpx2.TimeoutException("API error")
+
+    monkeypatch.setattr(httpx2, "get", mock_get)
+    assert fetch_height(123, 321) == 0

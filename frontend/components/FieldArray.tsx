@@ -45,6 +45,7 @@ export default function FieldArray<T>({
   getTitle,
   hideRemoveButton,
   level = 1,
+  maxItems,
   model,
   name,
   required,
@@ -57,6 +58,7 @@ export default function FieldArray<T>({
   getTitle?: (data: T) => string;
   hideRemoveButton?: boolean;
   level?: 1 | 2 | 3;
+  maxItems?: number;
   model: string;
   name: string;
   required?: boolean | number;
@@ -68,6 +70,12 @@ export default function FieldArray<T>({
   const fieldName = name.split(".").pop();
   const hidden =
     useSetting(`ui.fields.${model}.${fieldName}.hidden`, false).at(0) === true;
+  const hideAddButton =
+    formState.disabled ||
+    (typeof maxItems === "number" &&
+      Number.isInteger(maxItems) &&
+      maxItems > 0 &&
+      fields.length >= maxItems);
 
   if (hidden) {
     return null;
@@ -135,7 +143,7 @@ export default function FieldArray<T>({
               </Disclosure>
             );
           })}
-          {formState.disabled ? null : addButton}
+          {hideAddButton ? null : addButton}
         </div>
       </ModelContext.Provider>
     );
@@ -172,7 +180,7 @@ export default function FieldArray<T>({
             </div>
           );
         })}
-        {formState.disabled ? null : addButton}
+        {hideAddButton ? null : addButton}
       </div>
     </ModelContext.Provider>
   );

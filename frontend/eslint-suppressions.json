@@ -1,20 +1,4 @@
 {
-  "components/FieldArray.test.tsx": {
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 2
-    }
-  },
-  "components/Map.test.tsx": {
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
   "components/MapLayerTree/ImportFileWidget.test.tsx": {
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 2
@@ -52,39 +36,12 @@
       "count": 6
     }
   },
-  "components/SearchLayout/index.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 3
-    }
-  },
   "components/VflHistory.test.tsx": {
     "@typescript-eslint/no-unsafe-call": {
       "count": 1
     },
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 2
-    }
-  },
-  "components/Workflow/index.test.tsx": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 10
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 13
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "cypress/e2e/search.spec.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 5
     }
   },
   "cypress/e2e/vflz/participants.spec.ts": {
@@ -121,34 +78,6 @@
   "pages/admin/translations.tsx": {
     "react-hooks/preserve-manual-memoization": {
       "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "pages/admin/users.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "pages/pools.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "pages/search/advanced.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 3
-    }
-  },
-  "pages/search/index.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "pages/vflz/[vflzId]/evaluation.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   }
 }

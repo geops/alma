@@ -26,9 +26,9 @@ pytestmark = [
     "assigned_combined_ids, standorttyp, expected_next_combined_id",
     [
         (["101 D 0001", "101 D 02", "101 D 05"], "code:63:01", "101 D 06"),
-        (["101 D 0001", "101 D 02", "101 D 05"], "code:63:02", "101 B 01"),
+        (["101 D 0001", "101 D 02", "101 D 05"], "code:63:02", "101 S 01"),
         (["101 D 0001", "101 D 02", "101 B 05"], "code:63:01", "101 D 03"),
-        (["101 D 0001", "101 D 02", "101 B 98"], "code:63:02", "101 B 99"),
+        (["101 D 0001", "101 D 02", "101 B 98"], "code:63:02", "101 S 99"),
         (["101 D 0001", "101 D 02", "101 B 06"], "code:63:04", "101 S 01"),
     ],
 )
@@ -89,7 +89,7 @@ def test_laufende_nummer_resets_for_new_gemeinde(session, test_settings):
 
 def test_get_teilstandort_nummer(session, test_settings):
     settings.combined_id_factory = CombinedIdFactoryName.BFS_DBUS_LFD_WHITESPACES
-    settings.teilstandort_combined_id_factory = TeilstandortCombinedIdFactoryName.NUMBER
+    settings.teilstandort_combined_id_factory = TeilstandortCombinedIdFactoryName.DOT_NUMBER
 
     objekt = vflz_models.Objekt()
     session.add(objekt)
@@ -104,7 +104,7 @@ def test_get_teilstandort_nummer(session, test_settings):
     assert (
         generate_new_teilstandort_combined_id(
             session=session,
-            factory_name=TeilstandortCombinedIdFactoryName.NUMBER,
+            factory_name=TeilstandortCombinedIdFactoryName.DOT_NUMBER,
             vflz_combined_id=teilstandort1.combined_id,
         )
         == "001 D 01.02"
@@ -113,7 +113,7 @@ def test_get_teilstandort_nummer(session, test_settings):
     assert (
         generate_new_teilstandort_combined_id(
             session=session,
-            factory_name=TeilstandortCombinedIdFactoryName.NUMBER,
+            factory_name=TeilstandortCombinedIdFactoryName.DOT_NUMBER,
             vflz_combined_id=teilstandort2.combined_id,
         )
         == "001 D 01.01.01"
@@ -122,7 +122,7 @@ def test_get_teilstandort_nummer(session, test_settings):
     assert (
         generate_new_teilstandort_combined_id(
             session=session,
-            factory_name=TeilstandortCombinedIdFactoryName.NUMBER,
+            factory_name=TeilstandortCombinedIdFactoryName.DOT_NUMBER,
             vflz_combined_id=teilstandort3.combined_id,
         )
         == "sss.01"
@@ -531,4 +531,179 @@ def test_internal_bfs_abus_lfd_underscore_factory_twice(session, test_settings):
             gemeinde=gem_bern,
         )
         == "132_A_114"
+    )
+
+
+def test_bfs_abus_lfd_factory(session, test_settings):
+    settings.combined_id_factory = CombinedIdFactoryName.BFS_ABUS_LFD
+    gem_bern = make_gemeinde(session, name="Bern", bfs_nummer=200)
+    ablagerung_vftyp = session.scalars(
+        select(codes.StandortTyp).where(
+            codes.StandortTyp.code == constants.StandortTyp.ABLAGERUNG
+        )
+    ).one()
+
+    assert (
+        generate_new_combined_id(
+            session=session,
+            factory_name=CombinedIdFactoryName.BFS_ABUS_LFD,
+            vftyp=ablagerung_vftyp,
+            gemeinde=gem_bern,
+        )
+        == "200A0001"
+    )
+
+    vflz = make_vflz(session, "my site", 1, "200A0005")
+    vflz.gemeinde = gem_bern
+
+    assert (
+        generate_new_combined_id(
+            session=session,
+            factory_name=CombinedIdFactoryName.BFS_ABUS_LFD,
+            vftyp=ablagerung_vftyp,
+            gemeinde=gem_bern,
+        )
+        == "200A0006"
+    )
+
+def test_aa_bfs_lfd_dot_factory(session, test_settings):
+    settings.combined_id_factory = CombinedIdFactoryName.AA_BFS_LFD_DOT
+    gem_aarau = make_gemeinde(session, name="Aarau", bfs_nummer=4001)
+    gem_baden = make_gemeinde(session, name="Baden", bfs_nummer=4021)
+    ablagerung_vftyp = session.scalars(
+        select(codes.StandortTyp).where(
+            codes.StandortTyp.code == constants.StandortTyp.ABLAGERUNG
+        )
+    ).one()
+
+    assert (
+        generate_new_combined_id(
+            session=session,
+            factory_name=CombinedIdFactoryName.AA_BFS_LFD_DOT,
+            vftyp=ablagerung_vftyp,
+            gemeinde=gem_aarau,
+        )
+        == "AA4001.0001"
+    )
+
+    make_vflz(session, "Site 1", 1, "AA4001.0001")
+    make_vflz(session, "Site 2", 2, "AA4001.0277")
+    make_vflz(session, "Site 3", 3, "AA4021.0500")
+
+    assert (
+        generate_new_combined_id(
+            session=session,
+            factory_name=CombinedIdFactoryName.AA_BFS_LFD_DOT,
+            vftyp=ablagerung_vftyp,
+            gemeinde=gem_aarau,
+        )
+        == "AA4001.0278"
+    )
+    assert (
+        generate_new_combined_id(
+            session=session,
+            factory_name=CombinedIdFactoryName.AA_BFS_LFD_DOT,
+            vftyp=ablagerung_vftyp,
+            gemeinde=gem_baden,
+        )
+        == "AA4021.0501"
+    )
+
+
+def test_aa_bfs_lfd_dot_factory_ignores_teilstandorte(session, test_settings):
+    settings.combined_id_factory = CombinedIdFactoryName.AA_BFS_LFD_DOT
+    gem_aarau = make_gemeinde(session, name="Aarau", bfs_nummer=4001)
+    ablagerung_vftyp = session.scalars(
+        select(codes.StandortTyp).where(
+            codes.StandortTyp.code == constants.StandortTyp.ABLAGERUNG
+        )
+    ).one()
+    make_vflz(session, "Site 1", 1, "AA4001.0278")
+    make_vflz(session, "Site 2", 2, "AA4001.0278-1")
+    make_vflz(session, "Site 3", 3, "AA4001.0278-2")
+
+    assert (
+        generate_new_combined_id(
+            session=session,
+            factory_name=CombinedIdFactoryName.AA_BFS_LFD_DOT,
+            vftyp=ablagerung_vftyp,
+            gemeinde=gem_aarau,
+        )
+        == "AA4001.0279"
+    )
+
+
+def test_aa_bfs_lfd_dot_factory_ignores_malformed_suffixes(session, test_settings):
+    settings.combined_id_factory = CombinedIdFactoryName.AA_BFS_LFD_DOT
+    gem_aarau = make_gemeinde(session, name="Aarau", bfs_nummer=4001)
+    ablagerung_vftyp = session.scalars(
+        select(codes.StandortTyp).where(
+            codes.StandortTyp.code == constants.StandortTyp.ABLAGERUNG
+        )
+    ).one()
+    make_vflz(session, "Valid site", 1, "AA4001.0020")
+    make_vflz(session, "Too many digits", 2, "AA4001.99999")
+    make_vflz(session, "Non-numeric suffix", 3, "AA4001.999A")
+    make_vflz(session, "Child site", 4, "AA4001.9999-1")
+
+    assert (
+        generate_new_combined_id(
+            session=session,
+            factory_name=CombinedIdFactoryName.AA_BFS_LFD_DOT,
+            vftyp=ablagerung_vftyp,
+            gemeinde=gem_aarau,
+        )
+        == "AA4001.0021"
+    )
+
+
+def test_get_teilstandort_nummer_hyphen(session, test_settings):
+    settings.teilstandort_combined_id_factory = (
+        TeilstandortCombinedIdFactoryName.HYPHEN_NUMBER
+    )
+
+    assert (
+        generate_new_teilstandort_combined_id(
+            session=session,
+            factory_name=TeilstandortCombinedIdFactoryName.HYPHEN_NUMBER,
+            vflz_combined_id="AA4001.0278",
+        )
+        == "AA4001.0278-1"
+    )
+
+    make_vflz(session, "Teilstandort 1", 1, "AA4001.0278-1")
+    make_vflz(session, "Teilstandort 3", 2, "AA4001.0278-3")
+    make_vflz(session, "Teilstandort 1-1", 3, "AA4001.0278-1-1")
+
+    assert (
+        generate_new_teilstandort_combined_id(
+            session=session,
+            factory_name=TeilstandortCombinedIdFactoryName.HYPHEN_NUMBER,
+            vflz_combined_id="AA4001.0278",
+        )
+        == "AA4001.0278-4"
+    )
+    assert (
+        generate_new_teilstandort_combined_id(
+            session=session,
+            factory_name=TeilstandortCombinedIdFactoryName.HYPHEN_NUMBER,
+            vflz_combined_id="AA4001.0278-1",
+        )
+        == "AA4001.0278-1-2"
+    )
+
+
+def test_get_teilstandort_nummer_hyphen_ignores_zero(session, test_settings):
+    settings.teilstandort_combined_id_factory = (
+        TeilstandortCombinedIdFactoryName.HYPHEN_NUMBER
+    )
+    make_vflz(session, "Zero is not a child number", 1, "AA4001.0278-0")
+
+    assert (
+        generate_new_teilstandort_combined_id(
+            session=session,
+            factory_name=TeilstandortCombinedIdFactoryName.HYPHEN_NUMBER,
+            vflz_combined_id="AA4001.0278",
+        )
+        == "AA4001.0278-1"
     )

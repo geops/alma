@@ -1,5 +1,5 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { captureException } from "@sentry/nextjs";
+import * as Sentry from "@sentry/nextjs";
 import Collection from "ol/Collection";
 import GroupLayer from "ol/layer/Group";
 import ImageLayer from "ol/layer/Image";
@@ -638,7 +638,7 @@ function settings2TreeInternal(data: unknown, ids: Set<string>): Tree {
 
   const parsedItems = SettingItemsSchema.safeParse(data);
   if (!parsedItems.success) {
-    captureException(new Error("Failed to parse layer settings"), {
+    Sentry.captureException(new Error("Failed to parse layer settings"), {
       extra: { parsedItems },
     });
     return tree;
@@ -853,7 +853,7 @@ export function tree2Settings(tree: Tree): SettingItem[] {
           const zooms = new Array(tileGrid.getMaxZoom() + 1).fill(0);
           return {
             ...item,
-            dimensions: source.getDimensions() as Record<string, string>,
+            dimensions: source.getDimensions(),
             format: source.getFormat(),
             layer: source.getLayer(),
             legend,

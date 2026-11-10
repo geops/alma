@@ -1,7 +1,7 @@
 # TODO can we re-use the prod image as base image here?
 FROM python:3.11-slim-bookworm
 
-COPY --from=ghcr.io/astral-sh/uv:0.9.17 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /bin/
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gdal-bin zip libgdal-dev build-essential libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 graphviz \

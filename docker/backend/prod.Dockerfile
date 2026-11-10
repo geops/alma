@@ -1,6 +1,6 @@
 FROM python:3.11-slim-bookworm AS base
 
-COPY --from=ghcr.io/astral-sh/uv:0.9.17 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /bin/
 
 # gid 0 (root group) + group perms mirroring the owner, so the container
 # also works under OpenShift, which runs it as an arbitrary UID in group 0.

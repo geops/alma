@@ -23,7 +23,26 @@ start-services: backend/env_file
 	until curl --silent --fail --output /dev/null http://localhost:8080/auth/realms/alma/.well-known/openid-configuration; do sleep 1; done
 	@echo
 	@echo "alma     : http://localhost:8080/"
-	@echo "GraphiQL : http://localhost:8080/graphql"
+	@echo "GraphiQL : http://localhost:8080/graphql (if configured)"
+	@echo "SSO login: http://localhost:8080/api/auth/authorize/"
+	@echo
+	@echo "backend  : http://localhost:8000/"
+	@echo
+
+start-services-no-translations: backend/env_file
+	# set up the database before starting the rest of the services:
+	docker compose up -d --remove-orphans db
+	docker compose exec db wait_for_database.sh
+	make -C db db-migrate load-demo-fixtures
+	# needed to take KC_HOSTNAME into account:
+	docker compose run --rm --remove-orphans keycloak import --file /opt/keycloak/data/import/initial.json
+	# start the rest of the services:
+	docker compose up -d --remove-orphans
+	# make sure the links are ready before displaying the URLs:
+	until curl --silent --fail --output /dev/null http://localhost:8080/auth/realms/alma/.well-known/openid-configuration; do sleep 1; done
+	@echo
+	@echo "alma     : http://localhost:8080/"
+	@echo "GraphiQL : http://localhost:8080/graphql (if configured)"
 	@echo "SSO login: http://localhost:8080/api/auth/authorize/"
 	@echo
 	@echo "backend  : http://localhost:8000/"
@@ -31,6 +50,20 @@ start-services: backend/env_file
 
 stop-services:
 	docker compose --profile db_anonymize --profile backend_tests --profile frontend_dev down
+
+restart-services:
+	make stop-services
+	lsof -i :8080 || test $$? -eq 1
+	lsof -i :8000 || test $$? -eq 1
+	sudo systemctl stop nginx
+	make start-services
+
+restart-services-no-translations:
+	make stop-services
+	lsof -i :8080 || test $$? -eq 1
+	lsof -i :8000 || test $$? -eq 1
+	sudo systemctl stop nginx
+	make start-services-no-translations
 
 e2e-tests: stop-services
 	docker compose up -d db

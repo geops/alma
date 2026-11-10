@@ -1,4 +1,8 @@
-import type { SearchFilter, SearchTabularQueryVariables } from "@/lib/graphql";
+import type {
+  QuickSearchQuery,
+  SearchFilter,
+  SearchTabularQueryVariables,
+} from "@/lib/graphql";
 
 describe("Search Page", () => {
   beforeEach(() => {
@@ -140,14 +144,16 @@ describe("Search Page", () => {
       }
     });
 
-    cy.wait("@SearchTestQuery").then((interception) => {
+    cy.wait<{
+      operationName: string;
+      variables: SearchTabularQueryVariables;
+    }>("@SearchTestQuery").then((interception) => {
       const requestBody = interception.request.body;
       expect(requestBody).to.have.property("operationName");
 
-      expect(requestBody?.operationName).to.equal("searchTabular");
+      expect(requestBody.operationName).to.equal("searchTabular");
 
-      const variables: SearchTabularQueryVariables =
-        requestBody?.variables as SearchTabularQueryVariables;
+      const { variables } = requestBody;
 
       expect(variables).to.have.property("query");
       expect(variables.query).to.equal("testquery");
@@ -189,14 +195,16 @@ describe("Search Page", () => {
         }
       }
     });
-    cy.wait("@SearchAdvancedQuery").then((interception) => {
+    cy.wait<{
+      operationName: string;
+      variables: SearchTabularQueryVariables;
+    }>("@SearchAdvancedQuery").then((interception) => {
       const requestBody = interception.request.body;
       expect(requestBody).to.have.property("operationName");
 
-      expect(requestBody?.operationName).to.equal("searchTabular");
+      expect(requestBody.operationName).to.equal("searchTabular");
 
-      const variables: SearchTabularQueryVariables =
-        requestBody?.variables as SearchTabularQueryVariables;
+      const { variables } = requestBody;
 
       expect(variables).to.have.property("query");
       expect(variables.query).to.equal('Aktuelle-Nutzung = "Flugplatzareal"');
@@ -686,7 +694,9 @@ describe("Search Page", () => {
       "Erfassung",
     );
     cy.get("button[data-test=columnSelector]").click();
-    cy.get("div[role=dialog]").should("be.visible");
+    cy.get("[role=dialog] [data-test=SidebarDialog-panel]").should(
+      "be.visible",
+    );
     cy.get("div[role=dialog] form label").should("contain", "Bezeichnung");
     cy.get("div[role=dialog] input[name=fieldFilter]").type("erfa");
     cy.get("div[role=dialog] form label").should("not.contain", "Bezeichnung");
@@ -700,6 +710,14 @@ describe("Search Page", () => {
   });
 
   it("shows history and redirects from quick search to search and vflz page", () => {
+    cy.updateUserSetting("lesen-sachdaten", "vflHistory", [1, 2, 3]);
+    cy.intercept<{ query: string }>("POST", "/graphql", (req) => {
+      if (req.body.query.includes("query quickSearch")) {
+        req.alias = "QuickSearch";
+      } else if (req.body.query.includes("query vflHistory")) {
+        req.alias = "VflHistory";
+      }
+    });
     cy.visit("/search", {
       onBeforeLoad: (win) => {
         win.localStorage.clear();
@@ -707,33 +725,34 @@ describe("Search Page", () => {
     });
     cy.wait("@Search");
 
-    // eslint-disable-next-line cypress/no-unnecessary-waiting
-    cy.wait(2000); // flaky test: does not clear history fast enough
-
-    cy.updateUserSetting("lesen-sachdaten", "vflHistory", [1, 2, 3]);
-    cy.intercept<{ query: string }>("POST", "/graphql", (req) => {
-      if (req.body.query.includes("query quickSearch")) {
-        req.alias = "QuickSearch";
-      }
-    });
     cy.get("[data-test=Layout-QuickSearch]").should("not.exist");
     cy.get("input[name=quickSearch]").click();
-    cy.get(
-      "div[data-test=Layout-QuickSearch][role=listbox] div[role=option] a",
-    ).each((option, index) => {
-      expect(option).to.have.attr("href", `/vflz/${index + 1}`);
-    });
-    cy.get("input[name=quickSearch]").type("Betriebsstandort");
-    cy.wait("@QuickSearch").then(({ request }) => {
-      expect(request.body.variables.query).to.equal("Betriebsstandort");
+    cy.wait("@VflHistory");
+    cy.get("div[data-test=Layout-QuickSearch][role=listbox] div[role=option] a")
+      .should("have.length", 3)
+      .each((option, index) => {
+        expect(option).to.have.attr("href", `/vflz/${index + 1}`);
+      });
+    // Exact fixture names trigger direct-match navigation instead of the dropdown.
+    cy.get("input[name=quickSearch]").type("Betriebs");
+    cy.wait<
+      { variables: { query: string } },
+      { data: QuickSearchQuery; errors?: unknown[] }
+    >("@QuickSearch").then(({ request, response }) => {
+      expect(request.body.variables.query).to.equal("Betriebs");
+      expect(response?.body.errors).to.equal(undefined);
+      expect(response?.body.data.search.directMatch).to.equal(false);
+      expect(
+        response?.body.data.search.graph.results,
+      ).to.have.length.greaterThan(0);
     });
     cy.get("div[data-test=Layout-QuickSearch][role=listbox] [role=option] a")
       .eq(0)
-      .should("have.attr", "href", "/search?q=Betriebsstandort");
+      .should("have.attr", "href", "/search?q=Betriebs");
     cy.get("input[name=quickSearch]").type("{enter}");
-    cy.url().should("include", "/search?q=Betriebsstandort");
+    cy.url().should("include", "/search?q=Betriebs");
     cy.get("[data-test=Layout-QuickSearch]").should("not.exist");
-    cy.get("input[name=quickSearch]").type("Betriebsstandort");
+    cy.get("input[name=quickSearch]").type("Betriebs");
     cy.get("div[data-test=Layout-QuickSearch][role=listbox] div[role=option]")
       .eq(1)
       .click();

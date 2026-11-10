@@ -53,7 +53,7 @@ export default function Listbox({
   const selectedValue = useWatch<{
     [name]: Option["value"] | Option["value"][];
   }>({ name });
-  const fieldState = getFieldState(name);
+  const fieldState = getFieldState(name, formState);
 
   return (
     <Field name={name} {...props} error={fieldState.error}>

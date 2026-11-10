@@ -127,6 +127,20 @@ describe("Vflz data page", () => {
       cy.triggerGarbageCollection();
     });
 
+    it("limits Kompartimente additions using the admin setting", () => {
+      cy.resetFixture("ablagerungsstandort");
+      cy.stubSettings([{ key: "ui.ablagerungen.maxKompartimente", value: 1 }]);
+      cy.visit("/vflz/1/data");
+      cy.wait("@VflzData");
+
+      const addButton =
+        "[data-test=vflzDataFormAblagerungen] > [data-test=FieldArrayAddButton]";
+      formFind(addButton).should("not.exist");
+      formFind('button[name="ablagerungen.0.remove"]').click();
+      formFind(addButton).should("be.visible").click();
+      formFind(addButton).should("not.exist");
+    });
+
     it("reads and updates values for Ablagerungsstandort", () => {
       cy.resetFixture("ablagerungsstandort");
       cy.resetFixture("vollzug");

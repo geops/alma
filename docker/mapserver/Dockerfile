@@ -5,6 +5,7 @@ USER root
 # changed the ports to always use 8081.
 # This was intiially located in the /usr/local/bin/replace-variables-and-start file, but moved to
 # here, to allow non-root user execution
+ENV IO_TIMEOUT=300
 RUN sed -i \
         -e 's/<VirtualHost \*:8080>/<VirtualHost *:8081>/' \
         /etc/apache2/sites-available/000-default.conf \

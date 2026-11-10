@@ -1,9 +1,11 @@
 "use client";
 import { Zoom, ZoomSlider, ZoomToExtent } from "ol/control";
 import { type Extent, isEmpty } from "ol/extent";
+import ImageLayer from "ol/layer/Image";
 import TileLayer from "ol/layer/Tile";
 import { get as getProj } from "ol/proj";
 import { register } from "ol/proj/proj4";
+import ImageWMS from "ol/source/ImageWMS";
 import TileWMS from "ol/source/TileWMS";
 import View from "ol/View";
 import proj4 from "proj4";
@@ -31,8 +33,6 @@ register(proj4);
 // TODO: set tip labels based on translations
 const controls = [new ZoomSlider(), new Zoom()];
 
-let baseLayer: TileLayer;
-
 interface BaseLayerConfig {
   key: string;
   label?: string;
@@ -41,6 +41,7 @@ interface BaseLayerConfig {
   label_fr?: string;
   label_it?: string;
   layer: string;
+  tiled?: boolean;
   url: string;
 }
 
@@ -79,12 +80,20 @@ function BaseLayer({
   }, [activeLayer, key, layers]);
 
   useEffect(() => {
-    baseLayer = new TileLayer({
-      source: new TileWMS({
-        params: { LAYERS: activeLayer?.layer },
-        url: activeLayer?.url,
-      }),
-    });
+    const sourceOptions = {
+      params: { LAYERS: activeLayer?.layer },
+      url: activeLayer?.url,
+    };
+    const baseLayer =
+      activeLayer?.tiled === false
+        ? new ImageLayer({
+            source: new ImageWMS({
+              ...sourceOptions,
+              hidpi: false,
+              ratio: 1,
+            }),
+          })
+        : new TileLayer({ source: new TileWMS(sourceOptions) });
     map.getLayers().insertAt(0, baseLayer);
     return () => {
       return map.removeLayer(baseLayer) && undefined;

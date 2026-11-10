@@ -49,6 +49,7 @@ function CypressNextRouter({
     beforePopState: () => {
       return null;
     },
+    bfcacheId: "cypress",
     events: {
       emit: cy.stub().as("router:emit"),
       off: cy.stub().as("router:off"),

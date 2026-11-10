@@ -7,6 +7,7 @@ from sqlalchemy import sql
 from alma import wfs_cache
 from alma.db import get_session
 from alma.healthchecks import (
+    geoportal_ne_v_health_check,
     graphql_health_check,
     height_api_health_check,
     internal_wfs_health_check,
@@ -112,6 +113,13 @@ def sync_gws_bereich_wfs(timestamp: int):
         session.commit()
 
 
+@app.task(lock="geoportal_healthchecks")
+def geoportal_healthchecks(timestamp: int) -> None:
+    with get_session() as session:
+        geoportal_ne_v_health_check(session)
+        session.commit()
+
+
 TASKS = {
     "debug": debug,
     "update_wfs_cache": update_wfs_cache,
@@ -124,6 +132,7 @@ TASKS = {
     "sync_grun_wfs": sync_grun_wfs,
     "sync_gws_bereich_wfs": sync_gws_bereich_wfs,
     "sync_gws_zone_wfs": sync_gws_zone_wfs,
+    "geoportal_healthchecks": geoportal_healthchecks,
 }
 
 # Set up periodic tasks based on settings.

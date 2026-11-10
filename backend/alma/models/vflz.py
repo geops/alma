@@ -34,12 +34,18 @@ logger = getLogger(__name__)
 
 def fetch_height(x: int, y: int) -> int:
     """Fetches height from API for specific coordinates."""
-    response = httpx2.get(f"{settings.height_api}?easting={x}&northing={y}")
-    if response.status_code != 200:
-        logger.error("API Error for %s: %s", settings.height_api, response.text)
+    try:
+        response = httpx2.get(
+            f"{settings.height_api}?easting={x}&northing={y}", timeout=10
+        )
+        if response.status_code != 200:
+            logger.error("API Error for %s: %s", settings.height_api, response.text)
+            return 0
+        else:
+            return int(float(response.json()["height"]))
+    except Exception as e:
+        logger.error("Exception occurred while fetching height: %s", e)
         return 0
-    else:
-        return int(float(response.json()["height"]))
 
 
 class Objekt(Base, ErfassungMutationMixin):
@@ -1164,7 +1170,10 @@ class Vflz(Base, SupportsSnapshots, ErfassungMutationMixin, kw_only=True):
         Betrieb,
         init=False,
         cascade="all, delete-orphan",
-        order_by=order_by_start_date_criteria(Betrieb, Betrieb.intb_id),
+        order_by=[
+            Betrieb.relevant.is_(True).desc(),
+            *order_by_start_date_criteria(Betrieb, Betrieb.intb_id),
+        ],
     )
     schiessanlagen: Mapped[list[Schiessanlage]] = relationship(
         Schiessanlage,

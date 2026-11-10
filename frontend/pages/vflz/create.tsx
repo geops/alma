@@ -143,6 +143,14 @@ function FormFields() {
 export default function VflzCreatePage() {
   const { t } = useI18n();
   const router = useRouter();
+  const [createdVflzId, setCreatedVflzId] = useState<string>();
+
+  useEffect(() => {
+    if (createdVflzId) {
+      void router.push(`/vflz/${createdVflzId}/data`);
+    }
+  }, [createdVflzId, router]);
+
   return (
     <Layout container title={t("vflz.create.title")}>
       <Form<VflzCreateForm>
@@ -169,10 +177,8 @@ export default function VflzCreatePage() {
             },
           );
           if (createVflz.__typename === "Vflz") {
-            methods.reset(undefined, { keepValues: true });
-            setTimeout(() => {
-              void router.push(`/vflz/${createVflz.vflzId}/data`);
-            }, 100); // wait for reset to complete
+            methods.reset(values);
+            setCreatedVflzId(createVflz.vflzId);
           } else {
             return createVflz; // ProblemGroup
           }

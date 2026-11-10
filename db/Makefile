@@ -115,8 +115,11 @@ db-import-non-anonymized: data/projects data/processmaker db-import-settings db-
 	fi
 	$(MAKE) db-import-translated-codelists
 
+db-import-system-users:
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_system_users.sql postgresql://alma:alma@db:5432/alma
+
 load-demo-fixtures:
-	$(POSTGRES_CMD) psql -1 -f /include/import_system_users.sql postgresql://alma:alma@db:5432/alma
+	make db-import-system-users
 	$(POSTGRES_CMD) psql -1 -f /include/demo-fixtures.sql postgresql://alma:alma@db:5432/alma
 
 db-export-demo:

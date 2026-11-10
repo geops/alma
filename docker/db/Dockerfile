@@ -1,17 +1,26 @@
 ARG BUILD_ENV="prod"
 
 FROM postgres:18.3-bookworm AS build_base
-
+# Install prerequisites, including CA certificates
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
         postgresql-18-postgis-3 \
         postgresql-18-postgis-3-scripts \
         postgresql-server-dev-18 \
         build-essential \
-        pgxnclient \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pgxn install postgresql_anonymizer
+# Configure Dalibo repository
+RUN curl -fsSL https://repo.dalibo.com/install.sh | sh
+
+# Install PostgreSQL Anonymizer
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        postgresql_anonymizer_18 \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM build_base AS build_prod
 ONBUILD RUN mkdir /include

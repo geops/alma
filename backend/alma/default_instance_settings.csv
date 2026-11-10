@@ -1,4 +1,5 @@
 key,value,category,value_schema
+ui.ablagerungen.maxKompartimente,"""undefined""",ADMIN,"{""oneOf"": [{""type"": ""integer""}, {""const"": ""undefined""}]}"
 ui.fields.Ablagerung.bemerkungDatenimport.bem.hidden,true,ADMIN,{"""type""": """boolean"""}
 ui.fields.Ablagerung.tiefe.hidden,false,ADMIN,{"""type""": """boolean"""}
 ui.fields.Ablagerung.bis.hidden,false,ADMIN,{"""type""": """boolean"""}

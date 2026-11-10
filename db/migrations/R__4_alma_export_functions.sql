@@ -364,7 +364,14 @@ standorte as (
     where v.vfl_id in (
         select vfl_id from alma.vflz where vflz_id = any($1)
     )
-    and vflnr.c_org_kuerzel in (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')
+    and vflnr.c_org_kuerzel in (
+        select distinct trim(unnest(string_to_array(msgstr, ',')))
+        from alma.translations
+        where msgid in ('interlis_settings.aemter_vollzug', 'interlis_settings.amt_kuerzel')
+            and locale = 'de'
+            and msgstr is not null
+            and msgstr != ''
+    )
     order by v.vflz_id
 ),
 
@@ -387,7 +394,7 @@ geoportallinks as (
 ),
 
 
--- parcels for all returned sites
+-- saved parcels for all returned sites
 parzellen as (
   select 
     grun.h_nb_id as nbident, 
@@ -404,7 +411,7 @@ parzellen as (
 
 ),
 
--- parcels in xml form
+-- saved parcels in xml form
 parzellen_xml as (
 select parzellen.vflz_id,
         xmlelement(name "KbS_V1_5.Parzellenidentifikation",
@@ -416,7 +423,7 @@ where parzellen.nbident is not null and parzellen.parzelle is not null
 order by parzellen.parzelle
 ),
 
--- egrid in xml form
+--egrid in xml form
 egrid_xml as (
 select parzellen.vflz_id,
         xmlelement(name "KbS_V1_5.EGRID_",
@@ -427,6 +434,49 @@ from parzellen
 where parzellen.egrid is not null
 order by parzellen.parzelle
 ),
+
+
+
+-- parcels from external data for all returned sites
+parzellen_cache as (
+  select 
+    grun.h_nb_id as nbident, 
+    grun.h_gem_id as h_gem_id,
+    grun.egrid as egrid,
+    v.vflz_id as vflz_id, 
+    grun.gb_nummer as parzelle 
+  from standorte v
+  join alma.grun on st_intersects(v.wkb_geometry, grun.wkb_geometry)
+  left join alma.h_gem on h_gem.bfs_nummer = grun.h_gem_id
+  left join alma.h_nb on grun.h_nb_id = h_nb.h_nb_id
+  where not (grun.h_nb_id is null and grun.h_gem_id is null and grun.egrid is null and grun.gb_nummer is null)
+  group by grun.h_nb_id, grun.h_gem_id, grun.egrid, v.vflz_id, grun.gb_nummer
+),
+
+-- parcels in xml form
+parzellen_cache_xml as (
+select parzellen_cache.vflz_id,
+        xmlelement(name "KbS_V1_5.Parzellenidentifikation",
+        xmlelement(name "NBIdent", parzellen_cache.nbident),
+        xmlelement(name "Parzellennummer", parzellen_cache.parzelle)
+    ) as x_v15
+from parzellen_cache
+where parzellen_cache.nbident is not null and parzellen_cache.parzelle is not null
+order by parzellen_cache.parzelle
+),
+
+-- egrid in xml form
+egrid_cache_xml as (
+select parzellen_cache.vflz_id,
+        xmlelement(name "KbS_V1_5.EGRID_",
+            xmlelement(name "value", parzellen_cache.egrid)
+        )
+    as x_v15
+from parzellen_cache
+where parzellen_cache.egrid is not null
+order by parzellen_cache.parzelle
+),
+
 
 
 untersuchungsmassnahmen_pre_vfl as (
@@ -530,13 +580,24 @@ standorte_xml_v15 as (
           else
               xmlelement(name "Geo_Lage_Punkt", alma_export.interlis_kbs_v1_5_geometry(st_transform((standorte.wkb_geometry), 2056)))
           end,
-         case
+          case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.parzellen' and locale = 'de')= 'cache' then
+              case
+               when exists(select vflz_id from parzellen_cache_xml where parzellen_cache_xml.vflz_id = standorte.vflz_id) then
+                  xmlelement(name "Parzellenverweis",
+                        (select xmlagg(x_v15) from parzellen_cache_xml where parzellen_cache_xml.vflz_id = standorte.vflz_id)
+                  )
+               else
+                  xmlcomment('Parzellenverweis not available')
+              end
+            else
+              case
                when exists(select vflz_id from parzellen_xml where parzellen_xml.vflz_id = standorte.vflz_id) then
                   xmlelement(name "Parzellenverweis",
                         (select xmlagg(x_v15) from parzellen_xml where parzellen_xml.vflz_id = standorte.vflz_id)
                   )
                else
                   xmlcomment('Parzellenverweis not available')
+              end
           end,
           case
                when exists(select vflz_id from egrid_xml where egrid_xml.vflz_id = standorte.vflz_id) then
@@ -918,7 +979,14 @@ standorte as (
     where v.vfl_id in (
         select vfl_id from alma.vflz where vflz_id = any($1)
     )
-    and vflnr.c_org_kuerzel in (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')
+    and vflnr.c_org_kuerzel in (
+        select distinct trim(unnest(string_to_array(msgstr, ',')))
+        from alma.translations
+        where msgid in ('interlis_settings.aemter_vollzug', 'interlis_settings.amt_kuerzel')
+            and locale = 'de'
+            and msgstr is not null
+            and msgstr != ''
+    )
 ),
 
 
@@ -1843,7 +1911,14 @@ standorte as (
     where v.vfl_id in (
         select vfl_id from alma.vflz where vflz_id = any($1)
     )
-    and vflnr.c_org_kuerzel in (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')
+    and vflnr.c_org_kuerzel in (
+        select distinct trim(unnest(string_to_array(msgstr, ',')))
+        from alma.translations
+        where msgid in ('interlis_settings.aemter_vollzug', 'interlis_settings.amt_kuerzel')
+            and locale = 'de'
+            and msgstr is not null
+            and msgstr != ''
+    )
     order by v.vflz_id
 ),
 
@@ -2256,7 +2331,14 @@ standorte as (
     where v.vfl_id in (
         select vfl_id from alma.vflz where vflz_id = any($1)
     )
-    and vflnr.c_org_kuerzel in (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')
+    and vflnr.c_org_kuerzel in (
+        select distinct trim(unnest(string_to_array(msgstr, ',')))
+        from alma.translations
+        where msgid in ('interlis_settings.aemter_vollzug', 'interlis_settings.amt_kuerzel')
+            and locale = 'de'
+            and msgstr is not null
+            and msgstr != ''
+    )
     order by v.vflz_id
 ),
 
@@ -3106,3 +3188,762 @@ $_$;
 comment on function alma_export.interlis_vd is 'Generieren der INTERLIS XTF Datei für das kantonale Modell von Vaud. 
     Der Export beinhaltet alle publizierten Standorte nach der Altlast Verordnung';
 
+
+
+drop function if exists alma_export.interlis_lu(p_vflz_ids integer[]);
+
+create function alma_export.interlis_lu(p_vflz_ids integer[]) returns xml
+    language sql
+    as $_$
+
+with bidprops as (
+    select 
+        'kbsMGDM' || msgstr as bid
+    from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de'
+),
+
+wmsprops as (
+    (select msgstr as url_geoportal from alma.translations s where s.msgid = 'interlis_settings.url_standort' and locale = 'de') 
+),
+
+
+-- all sites of the list of vflz_ids
+standorte as (
+    select 'stao'||v.vflz_id::text as stao_tid,
+        v.vflz_id,
+        v.vfl_id,
+        v.vflz_combined_id_kt,
+        vflgeo.wkb_geometry,
+        vflnr.c_org_kuerzel,
+        'zb'||(select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_id' and locale = 'de') as zb_tid,
+        bem_standort.bem as standort_bemerkungen,
+        zentroid as wkb_point,
+        staotyp_mapping.code_long as staotyp,
+        v.c_vflz_deponietyp::text as deponietyp,
+        case when v.nachsorge = true then true::text else false::text end as nachsorge,
+        v.dat_rechtskraft::date as date_ersteintrag,
+        (   -- legally binding date
+            select vflz_is_published_v.dat_latest_published::text as dat_latest_published
+               from alma.vflz_is_published_v
+               where (vflz_is_published_v.vflz_id in ( select vflz_any_in_vfl.vflz_id
+                                    from alma.vflz vflz_any_in_vfl
+                                    where vflz_any_in_vfl.vfl_id = v.vfl_id)
+                    ) and vflz_is_published_v.is_latest_published
+        )::date as date_letzteanpassung,
+        statusaltlv_mapping.code_long as statusaltlv,
+        case when v.in_betrieb = true then true::text else false::text end as in_betrieb,
+        case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_katasterauszug' and locale = 'de') is not null then
+          (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_katasterauszug' and locale = 'de') 
+          || (regexp_replace(vfilename.filename::text, ' '::text, '%20'::text, 'g'::text))
+          else null end as url_kbs_datasheet,
+          v.bezeichnung as bezeichnung,
+          alma.translate_code(alma.msgid_code(v.h_vflz_bearbstand, v.c_vflz_bearbstand), 'de'::text) as bearbeitungsstand
+    from alma.vflz v
+    join alma.vflz_current_v vic on v.vflz_id = vic.vflz_id and vic.is_current /* only published versions */
+    left join alma_export.interlis_cod_mapping_v staotyp_mapping on staotyp_mapping.c_cli_id = v.h_vflz_vftyp
+                and staotyp_mapping.code = v.c_vflz_vftyp
+    left join alma.bere on bere.vflz_id = v.vflz_id 
+    left join alma.cod_kbsinfo info on info.h_bere_res_abwbewe = bere.h_bere_res_abwbewe and info.c_bere_res_abwbewe=bere.c_bere_res_abwbewe and info.belastet
+    left join alma_export.interlis_cod_mapping_v statusaltlv_mapping on statusaltlv_mapping.c_cli_id = bere.h_bere_res_abwbewe
+                and statusaltlv_mapping.code = bere.c_bere_res_abwbewe
+    left join alma.vflnr on v.vflz_id = vflnr.vflz_id and vflnr.aktiv
+
+    left join alma.vflgeo on vflgeo.vflz_id = v.vflz_id
+    left join alma.bemgrp bemg_standort on bemg_standort.public and bemg_standort.bemgrp='standort'
+    left join alma.bem bem_standort on bem_standort.bemgrp_id = bemg_standort.bemgrp_id and
+                bem_standort.key_value = v.vflz_id and bem_standort.public
+
+    left join alma_export.vflz_filename_v vfilename on vfilename.vflz_id = v.vflz_id
+
+    where v.vfl_id in (
+        select vfl_id from alma.vflz where vflz_id = any($1)
+    )
+    and vflnr.c_org_kuerzel in (
+        select distinct trim(unnest(string_to_array(msgstr, ',')))
+        from alma.translations
+        where msgid in ('interlis_settings.aemter_vollzug', 'interlis_settings.amt_kuerzel')
+            and locale = 'de'
+            and msgstr is not null
+            and msgstr != ''
+    )
+    order by v.vflz_id
+),
+
+branche as (
+select bran.*
+from (
+      select vflz_id, 
+      alma.translate_code(alma.msgid_code(intb.h_intb_bran, intb.c_intb_bran), 'de'::text) as branchenbezeichnung
+      from alma.intb  
+) bran
+join standorte s on bran.vflz_id = s.vflz_id
+),
+
+
+branche_xml as (
+select bran.vflz_id,
+        xmlelement(name "KbS_V1_5_LU_V1.Branche",
+        xmlelement(name "value", bran.branchenbezeichnung)
+    )as x_v14
+from branche bran
+),
+
+geoportallinks as (
+    select
+        standorte.vflz_id,
+        case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_standort_indikator' and locale = 'de') = 'standortnummer' then
+          wmsprops.url_geoportal || (regexp_replace(standorte.vflz_combined_id_kt::text, ' '::text, '%20'::text, 'g'::text))
+        when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_standort_indikator' and locale = 'de') = 'xy_koordinates' then
+           wmsprops.url_geoportal || '&y=' || st_x(standorte.wkb_point)::text || '&x=' || st_y(standorte.wkb_point)::text
+        when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_standort_indikator' and locale = 'de') = 'map_x_map_y_koordinates' then
+           wmsprops.url_geoportal || '&map_x=' || st_x(standorte.wkb_point)::text || '&map_y=' || st_y(standorte.wkb_point)::text
+        when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_standort_indikator' and locale = 'de') = 'c_koordinates' then
+           wmsprops.url_geoportal || '&c=' || st_y(standorte.wkb_point)::text || ',' || st_x(standorte.wkb_point)::text 
+        when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_standort_indikator' and locale = 'de') = 'ne_koordinates' then
+           wmsprops.url_geoportal || '&E=' || st_x(standorte.wkb_point)::text || '&N=' || st_y(standorte.wkb_point)::text
+        else wmsprops.url_geoportal 
+        end as permalink_geoportal
+    from standorte, wmsprops
+),
+
+
+-- saved parcels for all returned sites
+parzellen as (
+  select 
+    grun.h_nb_id as nbident, 
+    grun.h_gem_id as h_gem_id,
+    grun.egrid as egrid,
+    v.vflz_id as vflz_id, 
+    grun.gb_nummer as parzelle 
+  from standorte v
+  left join alma.bet on v.vflz_id = bet.vflz_id
+  left join alma.bet_art using (bet_id)
+  left join alma.grun using (grun_id)
+  where not (grun.h_nb_id is null and grun.h_gem_id is null and grun.egrid is null and grun.gb_nummer is null)
+  group by grun.h_nb_id, grun.h_gem_id, grun.egrid, v.vflz_id, grun.gb_nummer
+
+),
+
+-- saved parcels in xml form
+parzellen_xml as (
+select parzellen.vflz_id,
+        xmlelement(name "KbS_V1_5.Parzellenidentifikation",
+        xmlelement(name "NBIdent", parzellen.nbident),
+        xmlelement(name "Parzellennummer", parzellen.parzelle)
+    ) as x_v15
+from parzellen
+where parzellen.nbident is not null and parzellen.parzelle is not null
+order by parzellen.parzelle
+),
+
+--egrid in xml form
+egrid_xml as (
+select parzellen.vflz_id,
+        xmlelement(name "KbS_V1_5.EGRID_",
+            xmlelement(name "value", parzellen.egrid)
+        )
+    as x_v15
+from parzellen
+where parzellen.egrid is not null
+order by parzellen.parzelle
+),
+
+
+
+-- parcels from external data for all returned sites
+parzellen_cache as (
+  select 
+    grun.h_nb_id as nbident, 
+    grun.h_gem_id as h_gem_id,
+    grun.egrid as egrid,
+    v.vflz_id as vflz_id, 
+    grun.gb_nummer as parzelle 
+  from standorte v
+  join alma.grun on st_intersects(v.wkb_geometry, grun.wkb_geometry)
+  left join alma.h_gem on h_gem.bfs_nummer = grun.h_gem_id
+  left join alma.h_nb on grun.h_nb_id = h_nb.h_nb_id
+  where not (grun.h_nb_id is null and grun.h_gem_id is null and grun.egrid is null and grun.gb_nummer is null)
+  group by grun.h_nb_id, grun.h_gem_id, grun.egrid, v.vflz_id, grun.gb_nummer
+),
+
+-- parcels in xml form
+parzellen_cache_xml as (
+select parzellen_cache.vflz_id,
+        xmlelement(name "KbS_V1_5.Parzellenidentifikation",
+        xmlelement(name "NBIdent", parzellen_cache.nbident),
+        xmlelement(name "Parzellennummer", parzellen_cache.parzelle)
+    ) as x_v15
+from parzellen_cache
+where parzellen_cache.nbident is not null and parzellen_cache.parzelle is not null
+order by parzellen_cache.parzelle
+),
+
+-- egrid in xml form
+egrid_cache_xml as (
+select parzellen_cache.vflz_id,
+        xmlelement(name "KbS_V1_5.EGRID_",
+            xmlelement(name "value", parzellen_cache.egrid)
+        )
+    as x_v15
+from parzellen_cache
+where parzellen_cache.egrid is not null
+order by parzellen_cache.parzelle
+),
+
+
+
+untersuchungsmassnahmen_pre_vfl as (
+select massn.*
+from (
+      select tm.code_long, tm.ili_code, tm.ili_c_cli_id, v.vfl_id from alma_export.interlis_task_mapping_v tm join alma.vflz v on v.c_vflz_unterstand = tm.a4w_code
+) massn
+join standorte s on massn.vfl_id = s.vfl_id
+),
+
+untersuchungsmassnahmen_vfl as (
+select
+    s.vfl_id, up.code_long, up.ili_code, up.ili_c_cli_id
+from untersuchungsmassnahmen_pre_vfl up
+join standorte s on up.vfl_id = s.vfl_id
+union
+-- provide untmassn1 if no other untersuchungsmassnahme is available
+select s.vfl_id, 'UntMassn1' as code_long, 'UM1' as ili_code, 20023 as ili_c_cli_id
+from standorte s
+    where s.vfl_id not in (select vfl_id from untersuchungsmassnahmen_pre_vfl)
+    ),
+
+untersuchungsmassnahmen_xml_vfl as (
+select um.vfl_id,
+        xmlelement(name "KbS_V1_5.UntersMassn_",
+        xmlelement(name "value", um.code_long)
+    ) as x_v15
+from untersuchungsmassnahmen_vfl um
+),
+
+
+untersuchungsmassnahmen_pre_vflz as (
+select massn.*
+from (
+      select tm.code_long, tm.ili_code, tm.ili_c_cli_id, v.vfl_id, v.vflz_id from alma_export.interlis_task_mapping_v tm join alma.vflz v on v.c_vflz_unterstand = tm.a4w_code
+) massn
+join standorte s on massn.vflz_id = s.vflz_id
+),
+
+untersuchungsmassnahmen_vflz as (
+select
+    s.vflz_id, s.vfl_id, up.code_long, up.ili_code, up.ili_c_cli_id
+from untersuchungsmassnahmen_pre_vflz up
+join standorte s on up.vflz_id = s.vflz_id
+union
+-- provide untmassn1 if no other untersuchungsmassnahme is available
+select s.vflz_id, s.vfl_id, 'UntMassn1' as code_long, 'UM1' as ili_code, 20023 as ili_c_cli_id
+from standorte s
+    where s.vflz_id not in (select vflz_id from untersuchungsmassnahmen_pre_vflz)
+    ),
+
+
+
+untersuchungsmassnahmen_xml_vflz as (
+select um.vflz_id,
+        xmlelement(name "KbS_V1_5.UntersMassn_",
+        xmlelement(name "value", um.code_long)
+    ) as x_v15
+from untersuchungsmassnahmen_vflz um
+),
+
+
+-- sites in xml form
+
+standorte_xml_v15 as (
+    select xmlelement(name "KbS_V1_5.Belastete_Standorte.Belasteter_Standort",
+          xmlattributes(standorte.stao_tid as "TID"),
+          xmlelement(name "Katasternummer", standorte.vflz_combined_id_kt),
+          xmlelement(name "Bezeichnung", standorte.bezeichnung),
+          xmlelement(name "Bearbeitungsstand", standorte.bearbeitungsstand),
+          case
+               when exists(select vflz_id from branche_xml where branche_xml.vflz_id = standorte.vflz_id) then
+                  xmlelement(name "Branchenbezeichnung",
+                        (select xmlagg(x_v14) from branche_xml where branche_xml.vflz_id = standorte.vflz_id)
+                  )
+               else
+                  xmlcomment('Branchenbezeichnung not available')
+          end,
+          case when geoportallinks.permalink_geoportal is not null then
+            xmlelement(name "URL_Standort", 
+                xmlelement(name "KbS_V1_5.Belastete_Standorte.MultilingualUri",
+                    xmlelement(name "LocalisedText",
+                        xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",
+                            xmlelement(name "Language", 'de'),
+                            xmlelement(name "Text", concat(geoportallinks.permalink_geoportal, '&lang=de'))
+                        ), 
+                        xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",   
+                            case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr'
+                                then xmlelement(name "Language", 'rm')
+                                else xmlelement(name "Language", 'fr') end,
+                            case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr'
+                                     then xmlelement(name "Text", concat(geoportallinks.permalink_geoportal, '&lang=rm'))
+                                    else xmlelement(name "Text", concat(geoportallinks.permalink_geoportal, '&lang=fr')) end
+                        ),
+                        xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",
+                            xmlelement(name "Language", 'it'),
+                            xmlelement(name "Text", concat(geoportallinks.permalink_geoportal, '&lang=it'))
+                        )
+                    )
+                )
+            )
+          else 
+            xmlelement(name "URL_Standort", geoportallinks.permalink_geoportal)
+          end,
+          case when standorte.wkb_geometry is not null then
+              case when st_geometrytype(standorte.wkb_geometry) = 'ST_Point' then
+                  xmlelement(name "Geo_Lage_Punkt", alma_export.interlis_kbs_v1_5_geometry(st_transform((standorte.wkb_geometry), 2056)))
+              else
+                  xmlelement(name "Geo_Lage_Polygon", alma_export.interlis_kbs_v1_5_geometry(st_transform((standorte.wkb_geometry), 2056)))
+              end
+          else
+              xmlelement(name "Geo_Lage_Punkt", alma_export.interlis_kbs_v1_5_geometry(st_transform((standorte.wkb_geometry), 2056)))
+          end,
+          case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.parzellen' and locale = 'de')= 'cache' then
+              case
+               when exists(select vflz_id from parzellen_cache_xml where parzellen_cache_xml.vflz_id = standorte.vflz_id) then
+                  xmlelement(name "Parzellenverweis",
+                        (select xmlagg(x_v15) from parzellen_cache_xml where parzellen_cache_xml.vflz_id = standorte.vflz_id)
+                  )
+               else
+                  xmlcomment('Parzellenverweis not available')
+              end
+            else
+              case
+               when exists(select vflz_id from parzellen_xml where parzellen_xml.vflz_id = standorte.vflz_id) then
+                  xmlelement(name "Parzellenverweis",
+                        (select xmlagg(x_v15) from parzellen_xml where parzellen_xml.vflz_id = standorte.vflz_id)
+                  )
+               else
+                  xmlcomment('Parzellenverweis not available')
+              end
+          end,
+          case
+               when exists(select vflz_id from egrid_xml where egrid_xml.vflz_id = standorte.vflz_id) then
+                  xmlelement(name "EGRID", 
+                        (select xmlagg(x_v15) from egrid_xml where egrid_xml.vflz_id = standorte.vflz_id)
+                    )
+                else
+                    xmlcomment('EGRID not available')
+          end, 
+          xmlelement(name "Standorttyp", standorte.staotyp),
+          xmlelement(name "InBetrieb", standorte.in_betrieb),
+          case
+               when standorte.deponietyp is not null then
+                  xmlelement(name "Deponietyp", xmlelement(name "KbS_V1_5.Deponietyp_",
+                        xmlelement(name "value", standorte.deponietyp)
+                        )
+                  )
+                else
+                    xmlcomment('Deponietyp not available')
+          end,
+          case
+                when standorte.nachsorge is not null then
+                    xmlelement(name "Nachsorge", standorte.nachsorge)
+                else
+                    xmlcomment('Nachsorge not available')
+          end,
+          case 
+                when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.mapping_untersuchungsmassnahmen' and locale = 'de') = 'alle nach standortversionen' then
+                  xmlelement(name "Untersuchungsmassnahmen", (select xmlagg(x_v15) from untersuchungsmassnahmen_xml_vfl where untersuchungsmassnahmen_xml_vfl.vfl_id = standorte.vfl_id))
+                when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.mapping_untersuchungsmassnahmen' and locale = 'de') = 'aktuellste' then
+                  xmlelement(name "Untersuchungsmassnahmen", (select xmlagg(x_v15) from untersuchungsmassnahmen_xml_vflz where untersuchungsmassnahmen_xml_vflz.vflz_id = standorte.vflz_id))
+                else 
+                  xmlelement(name "Untersuchungsmassnahmen", (select xmlagg(x_v15) from untersuchungsmassnahmen_xml_vflz where untersuchungsmassnahmen_xml_vflz.vflz_id = standorte.vflz_id))
+          end,
+          xmlelement(name "StatusAltlV", standorte.statusaltlv),
+          xmlelement(name "Ersteintrag", standorte.date_ersteintrag::date),
+          xmlelement(name "LetzteAnpassung", standorte.date_letzteanpassung::date),
+          xmlelement(name "URL_KbS_Auszug",                                                                                                                                                               
+             xmlelement(name "KbS_V1_5.Belastete_Standorte.MultilingualUri",                                                                                                                               
+                 xmlelement(name "LocalisedText",                                                                                                                                                          
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                          
+                         xmlelement(name "Language", 'de'),                                                                                                                                                
+                         xmlelement(name "Text", standorte.url_kbs_datasheet)                                                                                                                              
+                     ),                                                                                                                                                                                    
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                          
+                         case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr' 
+                             then xmlelement(name "Language", 'rm')                                                                                                                                        
+                             else xmlelement(name "Language", 'fr') end,                                                                                                                                   
+                     xmlelement(name "Text", standorte.url_kbs_datasheet)                                                                                                                                  
+                     ),                                                                                                                                                                                   
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                          
+                         xmlelement(name "Language", 'it'),                                                                                                                                               
+                         xmlelement(name "Text", standorte.url_kbs_datasheet)                                                                                                                              
+                     )                                                                                                                                                                                     
+                 )                                                                                                                                                                                        
+             )                                                                                                                                                                                            
+           ),   
+          xmlcomment('Bemerkung not available'),
+          xmlelement(name "ZustaendigkeitKataster",
+            xmlattributes(
+                standorte.zb_tid as "REF"
+            )
+          )
+      ) as x
+    from standorte
+    join geoportallinks on geoportallinks.vflz_id = standorte.vflz_id
+    order by standorte.stao_tid
+),
+
+
+-- org
+zustaendige_behoerde as (
+select
+        'zb'||(select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_id' and locale = 'de') as zb_tid, /* this id also gets build in the standorte with-clause*/
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt' and locale = 'de') as behoerde_de,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt' and locale = 'fr') as behoerde_fr,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt' and locale = 'it') as behoerde_it,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_url' and locale = 'de') as url_behoerde_de,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_url' and locale = 'fr') as url_behoerde_fr,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_url' and locale = 'fr') as url_behoerde_rm,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_url' and locale = 'it') as url_behoerde_it,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_uid' and locale = 'de') as uid,
+        (select'interlis_settings.katastername') as katastername,
+        (select msgstr from alma.translations s where s.msgid = 'interlis_settings.url_kbs_auszug' and locale = 'de') as url_webgis
+),
+
+-- org as xml
+zustaendige_behoerde_xml as (
+    select 
+    xmlelement(name "KbS_V1_5.Belastete_Standorte.ZustaendigkeitKataster",
+      xmlattributes(zustaendige_behoerde.zb_tid as "TID"),
+      xmlelement(name "Zustaendige_Behoerde", 
+        xmlelement(name "LocalisationCH_V1.MultilingualText",                                                                                                                               
+                 xmlelement(name "LocalisedText",                                                                                                                                                         
+                     xmlelement(name "LocalisationCH_V1.LocalisedText",                                                                                                                         
+                         xmlelement(name "Language", 'de'),                                                                                                                                               
+                         xmlelement(name "Text", zustaendige_behoerde.behoerde_de)                                                                                                                    
+                     ),                                                                                                                                                                                   
+                     xmlelement(name "LocalisationCH_V1.LocalisedText",                                                                                                                         
+            case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr' 
+                             then xmlelement(name "Language", 'rm')                                                                                                                                       
+                             else xmlelement(name "Language", 'fr') end,                                                                                                                                  
+                         xmlelement(name "Text", zustaendige_behoerde.behoerde_fr)                                                                                                                    
+                     ),                                                                                                                                                                                   
+                     xmlelement(name "LocalisationCH_V1.LocalisedText",                                                                                                                         
+                         xmlelement(name "Language", 'it'),                                                                                                                                               
+                         xmlelement(name "Text", zustaendige_behoerde.behoerde_it)                                                                                                                    
+                     )                                                                                                                                                                                    
+                 )                                                                                                                                                                                        
+             )                                          
+      ),
+
+      xmlelement(name "URL_Behoerde",                                                                                                                                                                     
+             xmlelement(name "KbS_V1_5.Belastete_Standorte.MultilingualUri",                                                                                                                               
+                 xmlelement(name "LocalisedText",                                                                                                                                                         
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                         
+                         xmlelement(name "Language", 'de'),                                                                                                                                               
+                         xmlelement(name "Text", zustaendige_behoerde.url_behoerde_de)                                                                                                                    
+                     ),                                                                                                                                                                                   
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                         
+            case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr'
+                             then xmlelement(name "Language", 'rm')                                                                                                                                       
+                             else xmlelement(name "Language", 'fr') end,                                                                                                                                  
+                         xmlelement(name "Text", zustaendige_behoerde.url_behoerde_fr)                                                                                                                    
+                     ),                                                                                                                                                                                   
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                         
+                         xmlelement(name "Language", 'it'),                                                                                                                                               
+                         xmlelement(name "Text", zustaendige_behoerde.url_behoerde_it)                                                                                                                    
+                     )                                                                                                                                                                                    
+                 )                                                                                                                                                                                        
+             )                                                                                                                                                                                            
+         ), 
+
+      xmlelement(name "UID", zustaendige_behoerde.uid),
+      xmlelement(name "Katastername",
+            alma_export.interlis_kbs_localisedtext_t(zustaendige_behoerde.katastername, 
+            array['de',
+                    case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr'
+                        then 'rm' 
+                    else 'fr' end,
+                    'it'
+                ])
+      ),
+
+      xmlelement(name "URL_Kataster",                                                                                                                                                                     
+             xmlelement(name "KbS_V1_5.Belastete_Standorte.MultilingualUri",                                                                                                                               
+                 xmlelement(name "LocalisedText",                                                                                                                                                         
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                         
+                         xmlelement(name "Language", 'de'),                                                                                                                                               
+                         xmlelement(name "Text", concat(zustaendige_behoerde.url_webgis, '&lang=de'))                                                                                                     
+                     ),                                                                                                                                                                                   
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                         
+                         case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr'
+                             then xmlelement(name "Language", 'rm')                                                                                                                                       
+                             else xmlelement(name "Language", 'fr') end,                                                                                                                                  
+                         case when (select msgstr from alma.translations s where s.msgid = 'interlis_settings.amt_kuerzel' and locale = 'de')= 'gr'
+                                  then xmlelement(name "Text", concat(zustaendige_behoerde.url_webgis, '&lang=rm'))                                                                                       
+                                 else xmlelement(name "Text", concat(zustaendige_behoerde.url_webgis, '&lang=fr')) end                                                                                    
+                     ),                                                                                                                                                                                   
+                     xmlelement(name "KbS_V1_5.Belastete_Standorte.LocalisedUri",                                                                                                                         
+                         xmlelement(name "Language", 'it'),                                                                                                                                               
+                         xmlelement(name "Text", concat(zustaendige_behoerde.url_webgis, '&lang=it'))                                                                                                     
+                     )                                                                                                                                                                                    
+                 )                                                                                                                                                                                        
+             )                                                                                                                                                                                            
+         )   
+
+
+    ) as x_v15
+    from zustaendige_behoerde
+)
+
+-- assembling of the finished xml document according to the interlis schema
+select xmlelement(name "TRANSFER", xmlattributes('http://www.interlis.ch/INTERLIS2.3' as xmlns),
+    xmlelement(name "HEADERSECTION",
+        xmlattributes('alma' as "SENDER", '2.3' as "VERSION"),
+          xmlelement(name "MODELS", -- need to add all used models by hand
+              xmlelement(name "MODEL",xmlattributes('CoordSys' as "NAME",'2015-11-24' as "VERSION",'https://www.interlis.ch/models' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('InternationalCodes_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('Localisation_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('LocalisationCH_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('Dictionaries_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('DictionariesCH_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('Units' as "NAME",'2012-02-20' as "VERSION",'https://www.interlis.ch/models' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('GeometryCHLV95_V1' as "NAME",'2015-11-12' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+              xmlelement(name "MODEL",xmlattributes('KbS_V1_5' as "NAME",'2021-10-15' as "VERSION",'https://models.geo.admin.ch/BAFU' as "URI"))
+          )
+    ),
+   
+    xmlelement(name "DATASECTION",
+        xmlelement(name "KbS_V1_5.Belastete_Standorte",-- there is no attribute that could server as a bucket-identifier. so we generate an artiffical one.
+            xmlattributes((select bid from bidprops) as "BID"),
+                ( select xmlagg(x_v15) from zustaendige_behoerde_xml),
+                ( select xmlagg(x) from standorte_xml_v15)
+        )
+    )
+
+);
+
+$_$;
+
+comment on function alma_export.interlis_lu is 'Generieren der INTERLIS XTF Datei für die LU Version. 
+    Der Export beinhaltet alle aktuellen Standorte';
+
+
+drop function if exists alma_export.interlis_so_geometry(p_geom public.geometry);
+
+create function alma_export.interlis_so_geometry(p_geom public.geometry) returns xml
+    language plpgsql strict
+    as $$
+declare
+    result xml;
+begin
+    if st_geometrytype(p_geom) = 'ST_MultiPolygon' then
+        if st_srid(p_geom) != 2056 then
+            raise 'unsupported geometry srid: %', st_srid(p_geom);
+        end if;
+        select xmlelement(name "GeometryCHLV95_V1.MultiSurface",
+            xmlelement(name "Surfaces", xmlagg(
+                xmlelement(name "GeometryCHLV95_V1.SurfaceStructure",
+                    xmlelement(name "Surface", alma_export.interlis_geometry_polygon(
+                        st_geometryn(p_geom, surface_number)
+                    ))
+                ) order by surface_number
+            ))
+        ) into result
+        from generate_series(1, st_numgeometries(p_geom)) as surfaces(surface_number);
+    else
+        result := alma_export.interlis_kbs_v1_5_geometry(p_geom);
+    end if;
+    return result;
+end
+$$;
+
+comment on function alma_export.interlis_so_geometry is 'INTERLIS XML Export fuer Solothurn Geometrien';
+
+
+drop function if exists alma_export.interlis_so(p_vflz_ids integer[]);
+
+create function alma_export.interlis_so(p_vflz_ids integer[]) returns xml
+    language sql
+    as $_$
+
+with bidprops as (
+    select 'SO_AFU_KbS_Publikation' || msgstr as bid,
+        msgstr as amt_kuerzel
+    from alma.translations
+    where msgid = 'interlis_settings.amt_kuerzel' and locale = 'de'
+),
+
+standorte as (
+    select 'stao'||v.vflz_id::text as stao_tid,
+        v.vflz_combined_id_kt,
+        vflgeo.wkb_geometry,
+        alma.translate_code(alma.msgid_code(v.h_vflz_vftyp, v.c_vflz_vftyp), 'de') as staotyp,
+        alma.translate_code(alma.msgid_code(bere.h_bere_res_abwbewe, bere.c_bere_res_abwbewe), 'de') as bewertung,
+        concat(
+            alma.translate_code(alma.msgid_code(v.h_vflz_unterstand, v.c_vflz_unterstand), 'de'),
+            ' / ',
+            alma.translate_code(alma.msgid_code(v.h_vflz_bearbstand, v.c_vflz_bearbstand), 'de')
+        ) as stand,
+        case when vflnr.c_org_kuerzel = (select amt_kuerzel from bidprops) then vflnr.c_org_kuerzel
+            else 'andere'
+        end as vollzug
+    from alma.vflz v
+    join alma.vflz_is_published_v vip on v.vflz_id = vip.vflz_id and vip.is_latest_published
+    join alma_export.interlis_cod_mapping_v staotyp_mapping on staotyp_mapping.c_cli_id = v.h_vflz_vftyp
+        and staotyp_mapping.code = v.c_vflz_vftyp
+    join alma.bere on bere.vflz_id = v.vflz_id
+    join alma.cod_kbsinfo info on info.h_bere_res_abwbewe = bere.h_bere_res_abwbewe
+        and info.c_bere_res_abwbewe = bere.c_bere_res_abwbewe and info.belastet
+    join alma_export.interlis_cod_mapping_v statusaltlv_mapping on statusaltlv_mapping.c_cli_id = bere.h_bere_res_abwbewe
+        and statusaltlv_mapping.code = bere.c_bere_res_abwbewe
+    join alma.vflnr on v.vflz_id = vflnr.vflz_id and vflnr.aktiv
+    left join alma.vflgeo on vflgeo.vflz_id = v.vflz_id
+    where v.vfl_id in (
+        select vfl_id from alma.vflz where vflz_id = any($1)
+    )
+    and vflnr.c_org_kuerzel in (
+        select distinct trim(unnest(string_to_array(msgstr, ',')))
+        from alma.translations
+        where msgid in ('interlis_settings.aemter_vollzug', 'interlis_settings.amt_kuerzel')
+            and locale = 'de'
+            and msgstr is not null
+            and msgstr != ''
+    )
+),
+
+standorte_xml as (
+    select standorte.stao_tid,
+        xmlelement(name "model_so.Belastete_Standorte.Belasteter_Standort",
+            xmlattributes(standorte.stao_tid as "TID"),
+            xmlelement(name "Standortnummer", standorte.vflz_combined_id_kt),
+            xmlelement(name "Standorttyp", standorte.staotyp),
+            xmlelement(name "Bewertung", standorte.bewertung),
+            xmlelement(name "Stand", standorte.stand),
+            xmlelement(name "Vollzug", standorte.vollzug),
+            xmlelement(name "Geometrie", alma_export.interlis_so_geometry(st_transform(standorte.wkb_geometry, 2056)))
+        ) as x
+    from standorte
+)
+
+select xmlelement(name "TRANSFER", xmlattributes('http://www.interlis.ch/INTERLIS2.3' as xmlns),
+    xmlelement(name "HEADERSECTION",
+        xmlattributes('alma' as "SENDER", '2.3' as "VERSION"),
+        xmlelement(name "MODELS",
+            xmlelement(name "MODEL",xmlattributes('CoordSys' as "NAME",'2015-11-24' as "VERSION",'https://www.interlis.ch/models' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('InternationalCodes_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('Localisation_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('LocalisationCH_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('Dictionaries_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('DictionariesCH_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('Units' as "NAME",'2012-02-20' as "VERSION",'https://www.interlis.ch/models' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('GeometryCHLV95_V1' as "NAME",'2015-11-12' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('SO_AFU_KbS_Publikation__20230104' as "NAME",'2023-01-04' as "VERSION",'https://afu.so.ch' as "URI"))
+        )
+    ),
+    xmlelement(name "DATASECTION",
+        xmlelement(name "model_so.Belastete_Standorte",
+            xmlattributes((select bid from bidprops) as "BID"),
+            (select xmlagg(x order by stao_tid) from standorte_xml)
+        )
+    )
+);
+
+$_$;
+
+comment on function alma_export.interlis_so is 'Generieren der INTERLIS XTF Datei fuer das kantonale Modell von Solothurn.
+    Der Export beinhaltet alle publizierten Standorte nach der Altlast Verordnung';
+
+
+
+
+
+
+drop function if exists alma_export.interlis_so_restricted(p_vflz_ids integer[]);
+
+create function alma_export.interlis_so_restricted(p_vflz_ids integer[]) returns xml
+    language sql
+    as $_$
+
+with bidprops as (
+    select 'SO_AFU_KbS_Publikation' || msgstr as bid,
+        msgstr as amt_kuerzel
+    from alma.translations
+    where msgid = 'interlis_settings.amt_kuerzel' and locale = 'de'
+),
+
+standorte as (
+    select 'stao'||v.vflz_id::text as stao_tid,
+        v.vflz_id,
+        v.vfl_id,
+        v.vflz_combined_id_kt,
+        v.bezeichnung,
+        vflgeo.wkb_geometry,
+        alma.translate_code(alma.msgid_code(v.h_org_kuerzel, v.c_org_kuerzel), 'de') as org_id,
+        'zb'||v.c_org_kuerzel::text as zb_tid,
+        alma.translate_code(alma.msgid_code(v.h_vflz_vftyp, v.c_vflz_vftyp), 'de') as staotyp,
+        alma.translate_code(alma.msgid_code(v.h_vflz_bearbstand, v.c_vflz_bearbstand), 'de') as bearbeitungsstand,
+        alma.translate_code(alma.msgid_code(bere.h_bere_res_abwbewe, bere.c_bere_res_abwbewe), 'de') as bewertung,
+        alma.translate_code(alma.msgid_code(v.h_vflz_unterstand, v.c_vflz_unterstand), 'de') as untersuchungsstand,
+        v.c_org_kuerzel as org_id,
+        case when vflnr.c_org_kuerzel = (select amt_kuerzel from bidprops) then vflnr.c_org_kuerzel
+            else 'andere'
+        end as vollzug
+    from alma.vflz v
+    join alma.vflz_current_v vic on v.vflz_id = vic.vflz_id and vic.is_current
+    join alma.bere on bere.vflz_id = v.vflz_id and bere.c_bere_res_abwbewe != '00'
+    join alma.vflnr on v.vflz_id = vflnr.vflz_id and vflnr.aktiv
+    join alma.vflgeo on vflgeo.vflz_id = v.vflz_id
+    where v.vfl_id in (
+        select vfl_id from alma.vflz where vflz_id = any($1)
+    )
+    and vflnr.c_org_kuerzel in (
+        select distinct trim(unnest(string_to_array(msgstr, ',')))
+        from alma.translations
+        where msgid in ('interlis_settings.aemter_vollzug', 'interlis_settings.amt_kuerzel')
+            and locale = 'de'
+            and msgstr is not null
+            and msgstr != ''
+    )
+), 
+
+standorte_xml as (
+    select standorte.stao_tid,
+        xmlelement(name "model_so.Belastete_Standorte.Belasteter_Standort",
+            xmlattributes(standorte.stao_tid as "TID"),
+            xmlelement(name "Standortnummer", standorte.vflz_combined_id_kt),
+            xmlelement(name "Bezeichnung", standorte.bezeichnung),          
+            xmlelement(name "Standorttyp", standorte.staotyp),
+            xmlelement(name "Bearbeitungsstand", standorte.bearbeitungsstand),
+            xmlelement(name "Bewertung", standorte.bewertung),
+            xmlelement(name "Untersuchungsstand", standorte.untersuchungsstand),
+            xmlelement(name "Vollzug", standorte.vollzug),
+            xmlelement(name "Geometrie", alma_export.interlis_so_geometry(st_transform(standorte.wkb_geometry, 2056)))
+        ) as x
+    from standorte
+)
+
+select xmlelement(name "TRANSFER", xmlattributes('http://www.interlis.ch/INTERLIS2.3' as xmlns),
+    xmlelement(name "HEADERSECTION",
+        xmlattributes('alma' as "SENDER", '2.3' as "VERSION"),
+        xmlelement(name "MODELS",
+            xmlelement(name "MODEL",xmlattributes('CoordSys' as "NAME",'2015-11-24' as "VERSION",'https://www.interlis.ch/models' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('InternationalCodes_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('Localisation_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('LocalisationCH_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('Dictionaries_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('DictionariesCH_V1' as "NAME",'2011-08-30' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('Units' as "NAME",'2012-02-20' as "VERSION",'https://www.interlis.ch/models' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('GeometryCHLV95_V1' as "NAME",'2015-11-12' as "VERSION",'https://www.geo.admin.ch' as "URI")),
+            xmlelement(name "MODEL",xmlattributes('SO_AFU_KbS_Publikation_restricted_20221209' as "NAME",'2023-01-04' as "VERSION",'https://afu.so.ch' as "URI"))
+        )
+    ),
+    xmlelement(name "DATASECTION",
+        xmlelement(name "model_so.Belastete_Standorte",
+            xmlattributes((select bid from bidprops) as "BID"),
+            (select xmlagg(x order by stao_tid) from standorte_xml)
+        )
+    )
+);
+
+$_$;
+
+comment on function alma_export.interlis_so_restricted is 'Generieren der INTERLIS XTF Datei fuer das kantonale Modell von Solothurn.
+    Der Export beinhaltet alle aktuellen Standorte';

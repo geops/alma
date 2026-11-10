@@ -274,6 +274,10 @@ const emptyKompartimentStoffgruppe = {
 function VflzAblagerungen() {
   const { getValues } = useFormContext<VflzDataFormFragment>();
   const { pluralRules, t } = useI18n();
+  const [maxKompartimente] = useSetting<"undefined" | number | undefined>(
+    "ui.ablagerungen.maxKompartimente",
+    undefined,
+  );
   return (
     <Fieldset
       id="ablagerungen"
@@ -311,6 +315,9 @@ function VflzAblagerungen() {
             .filter(Boolean)
             .join(", ");
         }}
+        maxItems={
+          typeof maxKompartimente === "number" ? maxKompartimente : undefined
+        }
         model="Ablagerung"
         name="ablagerungen"
         value={emptyAblagerung}

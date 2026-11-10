@@ -202,10 +202,11 @@
       @apply bg-gray-7 flex h-11 w-11 bg-center bg-no-repeat;
     }
   }
-  > .active {
-    background-color: white;
+  > .active,
+  > .active:hover {
+    background-color: var(--color-blue-2);
     > button {
-      background-color: var(--color-blue-7);
+      background-color: var(--color-blue-6);
     }
   }
   > .disabled {

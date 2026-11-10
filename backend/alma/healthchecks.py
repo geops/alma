@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import urljoin
 
 import httpx2
-from sqlalchemy import select
+from sqlalchemy import select, sql
 from sqlalchemy.orm import Session
 
 from alma.keycloak import get_keycloak_client
@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 def height_api_health_check(session: Session):
     with monitor_task_status(session, "height_api", TaskCategory.APPLICATION):
-        response = httpx2.get(f"{settings.height_api}?easting=2600000&northing=1200000")
+        response = httpx2.get(
+            f"{settings.height_api}?easting=2600000&northing=1200000", timeout=10
+        )
         response.raise_for_status()
 
 
@@ -198,3 +200,13 @@ def keycloak_health_check(session: Session):
     ):
         response = keycloak_client.get(url="http://keycloak:8080/auth/admin/realms")
         response.raise_for_status()
+
+
+def geoportal_ne_v_health_check(session: Session):
+    with monitor_task_status(session, "geoportal_ne_v", TaskCategory.APPLICATION):
+        set_geoportal_ro_role_query = sql.text("set role geoportal_ro;")
+        set_alma_role_query = sql.text("set role alma;")
+        query = sql.text("select * from alma_export.geoportal_ne_v;")
+        session.execute(set_geoportal_ro_role_query)
+        session.execute(query)
+        session.execute(set_alma_role_query)

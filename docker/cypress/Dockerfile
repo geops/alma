@@ -1,4 +1,4 @@
-FROM cypress/browsers:node-24.18.0-chrome-150.0.7871.114-1-ff-152.0.5-edge-150.0.4078.65-1
+FROM cypress/browsers:node-24.22.1-chrome-156.0.8078.47-1-ff-158.0.1-edge-155.0.4283.62-1
 
 WORKDIR /frontend
 

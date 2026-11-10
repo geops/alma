@@ -77,7 +77,7 @@ class FaelligkeitStatus(Enum):
             return FaelligkeitStatus.RUHEND
         elif deadline < datetime.now():
             return FaelligkeitStatus.UEBERFAELLIG
-        elif deadline < (datetime.now() + timedelta(weeks=2)):
+        elif deadline < (datetime.now() + timedelta(weeks=4)):
             return FaelligkeitStatus.FAELLIG_NAECHSTE_WOCHE
         else:
             return FaelligkeitStatus.FAELLIG_SPAETER
@@ -700,7 +700,7 @@ class GeschaefteFilter:
                             filter_faelligkeit_clause,
                             and_(
                                 model_cls.deadline
-                                < (datetime.now() + timedelta(weeks=2)),
+                                < (datetime.now() + timedelta(weeks=4)),
                                 model_cls.deadline > datetime.now(),
                             ),
                         )
@@ -710,7 +710,7 @@ class GeschaefteFilter:
                             and_(
                                 ~model_cls.deadline.is_(None),
                                 model_cls.deadline
-                                >= (datetime.now() + timedelta(weeks=2)),
+                                >= (datetime.now() + timedelta(weeks=4)),
                             ),
                         )
                     case FaelligkeitStatus.RUHEND:

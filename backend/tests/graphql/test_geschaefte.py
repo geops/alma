@@ -5,6 +5,7 @@ from typing import Any
 import business_workflow_manager.models as wf_models
 import pytest
 from business_workflow_manager.types import NodeStatus
+from freezegun import freeze_time
 from pytest import raises as assert_raises
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -2409,7 +2410,7 @@ def test_global_geschaefte_page_filtered_flat(
     note = make_note_node(session, vflz, "Notiz")
 
     note.status = NodeStatus.FINISHED
-    note.deadline = datetime.now() + timedelta(weeks=1)
+    note.deadline = datetime.now() + timedelta(weeks=3)
 
     doc1.started_at = datetime.now()
     doc1.deadline = None
@@ -2417,7 +2418,7 @@ def test_global_geschaefte_page_filtered_flat(
 
     doc2.started_at = datetime.now() + timedelta(days=1)
     doc2.status = NodeStatus.SKIPPED
-    doc2.deadline = datetime.now() + timedelta(weeks=3)
+    doc2.deadline = datetime.now() + timedelta(weeks=5)
 
     doc3.started_at = datetime.now() + timedelta(days=2)
     doc3.deadline = datetime.now() - timedelta(hours=1)
@@ -2426,7 +2427,7 @@ def test_global_geschaefte_page_filtered_flat(
     doc4.deadline = None
 
     doc5.started_at = datetime.now()
-    doc5.deadline = datetime.now() + timedelta(weeks=3)
+    doc5.deadline = datetime.now() + timedelta(weeks=5)
 
     query = """
         query q($perPage: Int!, $reverse: Boolean! = false, $filter: GeschaefteFilter!) {
@@ -2688,7 +2689,7 @@ def test_filter_vflz_geschaefte_flat(
     note = make_note_node(session, vflz, "Notiz")
 
     note.status = NodeStatus.FINISHED
-    note.deadline = datetime.now() + timedelta(weeks=1)
+    note.deadline = datetime.now() + timedelta(weeks=3)
 
     doc1.started_at = datetime.now()
     doc1.deadline = None
@@ -2696,7 +2697,7 @@ def test_filter_vflz_geschaefte_flat(
 
     doc2.started_at = datetime.now() + timedelta(days=1)
     doc2.status = NodeStatus.SKIPPED
-    doc2.deadline = datetime.now() + timedelta(weeks=3)
+    doc2.deadline = datetime.now() + timedelta(weeks=5)
 
     doc3.started_at = datetime.now() + timedelta(days=2)
     doc3.deadline = datetime.now() - timedelta(hours=1)
@@ -2992,7 +2993,7 @@ def test_filter_global_geschaefte_page_tree(
     note = make_note_node(session, vflz, "Notiz")
 
     note.status = NodeStatus.FINISHED
-    note.deadline = datetime.now() + timedelta(weeks=1)
+    note.deadline = datetime.now() + timedelta(weeks=3)
 
     doc1.started_at = datetime.now()
     doc1.deadline = None
@@ -3000,7 +3001,7 @@ def test_filter_global_geschaefte_page_tree(
 
     doc2.started_at = datetime.now() + timedelta(days=1)
     doc2.status = NodeStatus.SKIPPED
-    doc2.deadline = datetime.now() + timedelta(weeks=3)
+    doc2.deadline = datetime.now() + timedelta(weeks=5)
 
     doc3.started_at = datetime.now() + timedelta(days=2)
     doc3.deadline = datetime.now() - timedelta(hours=1)
@@ -3022,7 +3023,7 @@ def test_filter_global_geschaefte_page_tree(
     doc31.parent = doc3
     doc31.status = NodeStatus.FINISHED
     doc31.started_at = datetime.now() + timedelta(days=7)
-    doc31.deadline = datetime.now() + timedelta(weeks=3)
+    doc31.deadline = datetime.now() + timedelta(weeks=5)
 
     doc32 = make_document_node(session, vflz, "Document 3-2")
     doc32.parent = doc3
@@ -3302,7 +3303,7 @@ def test_filter_vflz_geschaefte_page_tree(
     note = make_note_node(session, vflz, "Notiz")
 
     note.status = NodeStatus.FINISHED
-    note.deadline = datetime.now() + timedelta(weeks=1)
+    note.deadline = datetime.now() + timedelta(weeks=3)
 
     doc1.started_at = datetime.now()
     doc1.deadline = None
@@ -3310,7 +3311,7 @@ def test_filter_vflz_geschaefte_page_tree(
 
     doc2.started_at = datetime.now() + timedelta(days=1)
     doc2.status = NodeStatus.SKIPPED
-    doc2.deadline = datetime.now() + timedelta(weeks=3)
+    doc2.deadline = datetime.now() + timedelta(weeks=5)
 
     doc3.started_at = datetime.now() + timedelta(days=2)
     doc3.deadline = datetime.now() - timedelta(hours=1)
@@ -3332,7 +3333,7 @@ def test_filter_vflz_geschaefte_page_tree(
     doc31.parent = doc3
     doc31.status = NodeStatus.FINISHED
     doc31.started_at = datetime.now() + timedelta(days=7)
-    doc31.deadline = datetime.now() + timedelta(weeks=3)
+    doc31.deadline = datetime.now() + timedelta(weeks=5)
 
     doc32 = make_document_node(session, vflz, "Document 3-2")
     doc32.parent = doc3
@@ -3381,7 +3382,7 @@ def test_filter_vflz_geschaefte_page_tree_by_task_id(
 
     doc2.started_at = datetime.now() + timedelta(days=1)
     doc2.status = NodeStatus.SKIPPED
-    doc2.deadline = datetime.now() + timedelta(weeks=3)
+    doc2.deadline = datetime.now() + timedelta(weeks=5)
 
     doc3.started_at = datetime.now() + timedelta(days=2)
     doc3.deadline = datetime.now() - timedelta(hours=1)
@@ -3403,7 +3404,7 @@ def test_filter_vflz_geschaefte_page_tree_by_task_id(
     doc31.parent = doc3
     doc31.status = NodeStatus.FINISHED
     doc31.started_at = datetime.now() + timedelta(days=7)
-    doc31.deadline = datetime.now() + timedelta(weeks=3)
+    doc31.deadline = datetime.now() + timedelta(weeks=5)
 
     doc32 = make_document_node(session, vflz, "Document 3-2")
     doc32.parent = doc3
@@ -3466,7 +3467,7 @@ def test_get_global_geschaefte_page_by_task_id_flat_filtered(
 
     doc2.started_at = datetime.now() + timedelta(days=1)
     doc2.status = NodeStatus.SKIPPED
-    doc2.deadline = datetime.now() + timedelta(weeks=3)
+    doc2.deadline = datetime.now() + timedelta(weeks=5)
 
     doc3.started_at = datetime.now() + timedelta(days=2)
     doc3.deadline = datetime.now() - timedelta(hours=1)
@@ -3488,7 +3489,7 @@ def test_get_global_geschaefte_page_by_task_id_flat_filtered(
     doc31.parent = doc3
     doc31.status = NodeStatus.FINISHED
     doc31.started_at = datetime.now() + timedelta(days=7)
-    doc31.deadline = datetime.now() + timedelta(weeks=3)
+    doc31.deadline = datetime.now() + timedelta(weeks=5)
 
     doc32 = make_document_node(session, vflz, "Document 3-2")
     doc32.parent = doc3
@@ -3596,16 +3597,21 @@ def test_get_global_geschaefte_page_by_task_id_which_is_filtered_out(
     }
 
 
+@freeze_time("2026-01-01 12:00:00")
 @pytest.mark.parametrize(
-    "deadline, status",
+    "offset, status",
     [
-        (datetime.now() + timedelta(weeks=1), FaelligkeitStatus.FAELLIG_NAECHSTE_WOCHE),
+        (timedelta(weeks=1), FaelligkeitStatus.FAELLIG_NAECHSTE_WOCHE),
+        (timedelta(weeks=3), FaelligkeitStatus.FAELLIG_NAECHSTE_WOCHE),
+        (timedelta(weeks=4, microseconds=-1), FaelligkeitStatus.FAELLIG_NAECHSTE_WOCHE),
         (None, FaelligkeitStatus.RUHEND),
-        (datetime.now() - timedelta(hours=1), FaelligkeitStatus.UEBERFAELLIG),
-        (datetime.now() + timedelta(weeks=3), FaelligkeitStatus.FAELLIG_SPAETER),
+        (timedelta(hours=-1), FaelligkeitStatus.UEBERFAELLIG),
+        (timedelta(weeks=4), FaelligkeitStatus.FAELLIG_SPAETER),
+        (timedelta(weeks=5), FaelligkeitStatus.FAELLIG_SPAETER),
     ],
 )
-def test_faelligkeits_status(deadline, status):
+def test_faelligkeits_status(offset, status):
+    deadline = datetime.now() + offset if offset is not None else None
     assert FaelligkeitStatus.from_datetime(deadline) == status
 
 

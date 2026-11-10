@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import subprocess
@@ -18,6 +19,7 @@ from preview_generator.exception import (  # pyright: ignore[reportMissingTypeSt
 from preview_generator.manager import (  # pyright: ignore[reportMissingTypeStubs]
     PreviewManager,
 )
+from procrastinate import jobs
 from sqlalchemy import or_, select
 
 from alma import wfs_cache
@@ -30,6 +32,7 @@ from alma.models.subj import Subjekt
 from alma.models.vflz import Vflz, fetch_height
 from alma.permissions import RoleName
 from alma.settings import settings
+from alma.task_queue.app import app
 from alma.workflow_integration import add_event_handlers, wf_manager_config
 
 logging.basicConfig(
@@ -281,6 +284,22 @@ def update_height():
                 )
             vflz.set_zentroid(zentroid)
         session.commit()
+
+
+@main.command("kill-stalled-jobs")
+def kill_stalled_jobs():
+    async def main():
+        async with app.open_async():  # pyright: ignore[reportUnknownMemberType]
+            stalled_jobs = await app.job_manager.get_stalled_jobs(30)
+            for job in stalled_jobs:
+                await app.job_manager.finish_job(
+                    job=job,
+                    status=jobs.Status.ABORTED,
+                    delete_job=False,
+                )
+                print(f"Aborted job {job.id}: {job.task_name}")
+
+    asyncio.run(main())
 
 
 if __name__ == "__main__":

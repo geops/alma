@@ -1,7 +1,7 @@
 # <img src="alma-logo.png" width=50> alma
 
 **alma** is a web application to manage the register of contaminated sites. It supports authorities in documenting suspected sites and polluted sites, running the
-investigation and remediation workflows required by the Swiss *Contaminated Sites Ordinance (CSO)*, and producing register extracts and reports.
+investigation and remediation workflows required by the Swiss _Contaminated Sites Ordinance (CSO)_, and producing register extracts and reports.
 
 ## Requirements
 
@@ -34,7 +34,7 @@ After changing code or switching branches, rebuild the docker images with:
 
     $ make rebuild
 
-To login, use these credentials: 
+To login, use these credentials:
 
 - username: `test@alma-os.ch`
 - password: `demo2024`
@@ -56,16 +56,16 @@ image from the sources in this repository.
 `make start-services` starts the following containers (see
 [`docker-compose.yml`](./docker-compose.yml) for the full list):
 
-| Service   | Purpose                                     |
-| ----------| ------------------------------------------- |
-| `nginx`    | Reverse proxy in front of frontend, backend, MapServer and Keycloak |
-| `backend`  | GraphQL / REST API                          |
-| `frontend` | Next.js UI                                  |
-| `db`       | PostgreSQL + PostGIS + anonymizer extension |
-| `keycloak` | Authentication                              |
-| `mapserver`| WMS/WFS map rendering                       |
-| `email`    | Debug SMTP server for local development     |
-| `scheduler`| Cron jobs                                   |
+| Service     | Purpose                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| `nginx`     | Reverse proxy in front of frontend, backend, MapServer and Keycloak |
+| `backend`   | GraphQL / REST API                                                  |
+| `frontend`  | Next.js UI                                                          |
+| `db`        | PostgreSQL + PostGIS + anonymizer extension                         |
+| `keycloak`  | Authentication                                                      |
+| `mapserver` | WMS/WFS map rendering                                               |
+| `email`     | Debug SMTP server for local development                             |
+| `scheduler` | Cron jobs                                                           |
 
 ## Configure authentication for deployments
 
@@ -93,7 +93,6 @@ The relevant settings for login requirements can be found under `Authentication`
 
 Two-factor authentication is limited to OTP and WebAuthn.
 
-
 ### Variant 2: With external identity provider
 
 In this case, the user is redirected to the external identity provider for login. The external identity provider must be configured in keycloak.
@@ -101,8 +100,6 @@ In this case, the user is redirected to the external identity provider for login
 Make sure to map the correct field to the keycloak username (e.g. `nickname` for geOps SSO).
 
 After setting up the external identity provider, you can disable the local login in the `Authentication` settings.
-
-
 
 ## Getting help & contributing
 

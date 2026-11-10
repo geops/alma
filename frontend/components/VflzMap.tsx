@@ -123,7 +123,9 @@ function VflzMap({
     }
     if (vflz && "zentroid" in vflz && vflz.zentroid) {
       const geometry = geoJSON.readGeometry(vflz.zentroid);
-      features.push(new Feature({ dim, geometry, hideZentroid, isVflgeo }));
+      if (geometry) {
+        features.push(new Feature({ dim, geometry, hideZentroid, isVflgeo }));
+      }
     }
     source.clear();
     let frame: number | undefined;

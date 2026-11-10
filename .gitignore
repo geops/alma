@@ -18,8 +18,3 @@ development.ini
 
 # certificate
 backend/ca_icinga.srv.geops.de.crt
-
-# zap
-zap/reports
-zap/openapi.json
-zap/zap-automation.yaml

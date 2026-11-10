@@ -103,7 +103,9 @@ export default function AlmaInput({
   });
 
   const fieldState =
-    "name" in props ? getFieldState(props.name) : { error: props.error };
+    "name" in props
+      ? getFieldState(props.name, formState)
+      : { error: props.error };
 
   const numberProps: InputHTMLAttributes<HTMLInputElement> = useMemo(() => {
     if (type === "float") {

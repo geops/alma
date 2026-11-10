@@ -427,7 +427,7 @@ def test_get_beurteilung_gruppen_statistic(
             {
                 "started_at": timedelta(days=-1),
                 "finished_at": None,
-                "deadline": timedelta(days=12),
+                "deadline": timedelta(days=21),
                 "status": NodeStatus.STARTED,
             },
             [

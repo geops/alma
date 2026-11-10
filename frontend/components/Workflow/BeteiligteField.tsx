@@ -89,12 +89,12 @@ export default function BeteiligteField({
   const { t } = useI18n();
   const [filter, setFilter] = useState("");
   const [active, setActive] = useState(false);
-  const { getFieldState, register } = useFormContext();
+  const { formState, getFieldState, register } = useFormContext();
   const { onChange } = register(name, { required, value: [] });
   const selectedOptions = useWatch<
     Record<string, BeteiligteFieldBeteiligterGeschaeftFragment[]>
   >({ name });
-  const fieldState = getFieldState(name);
+  const fieldState = getFieldState(name, formState);
   const isSachbearbeiter = useMemo(() => {
     return name === "sachbearbeitung";
   }, [name]);

@@ -39,7 +39,9 @@ export default function AlmaCheckbox({
     <Field
       inline
       {...props}
-      error={getFieldState("name" in props ? props.name : "name").error}
+      error={
+        getFieldState("name" in props ? props.name : "name", formState).error
+      }
     >
       <Checkbox
         checked={checked}

@@ -12,3 +12,6 @@ allowBuilds:
   "@sentry/cli": true
   cypress: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - postcss@8.5.32

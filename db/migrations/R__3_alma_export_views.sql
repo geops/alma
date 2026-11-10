@@ -884,7 +884,7 @@ create view alma_export.report_workflows_v as
         end as autor,
         is_public
     from alma.vflz
-        left join alma.wf_node on vflz.vfl_id = wf_node.entity_id or vflz.vflz_id = wf_node.entity_id
+        left join alma.wf_node on wf_node.entity_id in (select vflz_id from alma.vflz v where vflz.vfl_id = v.vfl_id)
         cross join ( select translations.locale as language
             from alma.translations
             group by translations.locale) lang
@@ -1454,7 +1454,7 @@ create view alma_export.report_berichte_be_v as
         end as autor,
         is_public
     from alma.vflz
-        left join alma.wf_node on vflz.vfl_id = wf_node.entity_id or vflz.vflz_id = wf_node.entity_id
+        left join alma.wf_node on wf_node.entity_id in (select vflz_id from alma.vflz v where vflz.vfl_id = v.vfl_id)
         cross join ( select translations.locale as language
             from alma.translations
             group by translations.locale) lang
@@ -1516,7 +1516,7 @@ create view alma_export.report_workflows_be_v as
         end as sachbearbeitung,
         is_public
     from alma.vflz
-        left join alma.wf_node on vflz.vfl_id = wf_node.entity_id or vflz.vflz_id = wf_node.entity_id
+        left join alma.wf_node on wf_node.entity_id in (select vflz_id from alma.vflz v where vflz.vfl_id = v.vfl_id)
         cross join ( select translations.locale as language
             from alma.translations
             group by translations.locale) lang
@@ -1567,7 +1567,7 @@ create view alma_export.tg_kbs_intern as
         end as nachsorge,
         case
             when untmass_aktuellste.untmass is not null then untmass_aktuellste.untmass
-            else 'untmassn1'::text
+            else 'UntMassn1'::text
         end as untersuchungsmassnahmen,
         statusaltlv_mapping.code_long as statusaltlv,
         v.dat_rechtskraft as ersteintrag,
@@ -1613,7 +1613,7 @@ create view alma_export.tg_kbs_intern as
                     array_to_string(array_agg(p1.gb_nummer order by p1.gb_nummer), ','::text) as par1,
                     p1.grundbuch::text as grundbuch
                    from 
-                   	( select 'tg'::text || g.h_nb_id as nbident,
+                   	( select g.h_nb_id as nbident,
                             bet.vflz_id,
                             g.gb_nummer,
                             nb.bezeichnung as grundbuch

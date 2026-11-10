@@ -16,7 +16,9 @@ class oleControl extends Control {
 
   un!: ObjectOnSignature<EventsKey> & OnSignature<"change:active", Event, null>;
 
-  constructor(options: { tipLabel?: string } & Options) {
+  declare protected element: HTMLElement;
+
+  constructor(options: { element: HTMLElement; tipLabel?: string } & Options) {
     super(options);
 
     const button = document.createElement("button");

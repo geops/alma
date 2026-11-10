@@ -10,6 +10,7 @@ from ..dependencies import get_session
 from ..graphql.schema import schema
 from ..models.auth import User
 from ..oidc import get_current_user
+from ..settings import settings
 from ..workflow_integration import add_event_handlers, wf_manager_config
 from .context import Context
 
@@ -36,7 +37,9 @@ async def graphql_context_getter(
 def init_app(app: FastAPI) -> None:
     app.include_router(
         GraphQLRouter[Coroutine[Any, Any, Context], Any](
-            schema=schema, context_getter=graphql_context_getter
+            schema=schema,
+            context_getter=graphql_context_getter,
+            graphql_ide="graphiql" if settings.debug.graphql_ide else None,
         ),
         prefix="/graphql",
     )

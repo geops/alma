@@ -11,6 +11,8 @@ interface ToolbarOptions {
 }
 
 class Toolbar extends Control {
+  declare protected element: HTMLElement;
+
   private controls = new Collection<oleControl>();
 
   constructor(options?: ToolbarOptions) {

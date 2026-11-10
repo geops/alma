@@ -26,7 +26,7 @@ export default function AlmaRadioGroup({
   const { formState, getFieldState, register } = useFormContext();
   const { onChange } = register(name, { required, value: null });
   const selectedValue = useWatch({ name }) as Option["value"];
-  const fieldState = getFieldState(name);
+  const fieldState = getFieldState(name, formState);
 
   return (
     <AlmaField error={fieldState?.error} label={props.label} name={name}>

@@ -141,9 +141,10 @@ class ModifyControl extends oleControl {
 
   updateCursor = (event: MapBrowserEvent) => {
     const map = this.getMap();
-    if (map) {
+    const target = map?.getTargetElement();
+    if (target) {
       const features = this.source.getFeaturesAtCoordinate(event.coordinate);
-      map.getTargetElement().style.cursor = features.length ? "pointer" : "";
+      target.style.cursor = features.length ? "pointer" : "";
     }
   };
 

@@ -46,9 +46,9 @@ dev-server-setup: dev-server-clean
 cypress-component-tests:
 	docker rm $(CONTAINER_NAME) || true
 	if [ -n "$(RECORD_KEY)" ]; then \
-		docker compose run --name $(CONTAINER_NAME) cypress npx cypress run --component --record --key $(RECORD_KEY); \
+		docker compose run --name $(CONTAINER_NAME) cypress npx cypress run --component --browser chrome --record --key $(RECORD_KEY); \
 	else \
-		docker compose run --name $(CONTAINER_NAME) cypress npx cypress run --component --record false; \
+		docker compose run --name $(CONTAINER_NAME) cypress npx cypress run --component --browser chrome --record false; \
 	fi
 
 cypress-e2e-test-user:
@@ -66,9 +66,9 @@ cypress-e2e-tests:
 	docker compose up -d
 	make cypress-e2e-test-user
 	if [ -n "$(RECORD_KEY)" ]; then \
-		docker compose run --name $(CONTAINER_NAME) cypress npx cypress run --browser chrome --headed --no-runner-ui --record --key $(RECORD_KEY); \
+		docker compose run --no-deps --name $(CONTAINER_NAME) cypress npx cypress run --browser chrome --headed --no-runner-ui --record --key $(RECORD_KEY); \
 	else \
-		docker compose run --name $(CONTAINER_NAME) cypress npx cypress run --browser chrome --headed --no-runner-ui --record false; \
+		docker compose run --no-deps --name $(CONTAINER_NAME) cypress npx cypress run --browser chrome --headed --no-runner-ui --record false; \
 	fi
 
 copy-cypress-data:

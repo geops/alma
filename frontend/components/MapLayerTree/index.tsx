@@ -460,7 +460,7 @@ export default function MapLayerTree({
         className={`alma-map-widget absolute top-4 left-4 z-20 flex space-x-px p-1 ${className}`}
       >
         <button
-          className={`flex h-11 w-11 items-center justify-center rounded-l-lg ${layerTreeOpen ? "text-blue-7 bg-white" : "text-gray-7 bg-white/85 hover:bg-white"}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-l-lg ${layerTreeOpen ? "text-blue-6 bg-blue-2" : "text-gray-7 bg-white/85 hover:bg-white"}`}
           data-test="MapLayerTree-toggle"
           onClick={() => {
             return setLayerTreeOpen(!layerTreeOpen);
@@ -470,7 +470,7 @@ export default function MapLayerTree({
           <LayerTreeIcon />
         </button>
         <button
-          className={`flex h-11 w-11 items-center justify-center rounded-r-lg ${infoActive ? "text-blue-7 bg-white" : "text-gray-7 bg-white/85 hover:bg-white"}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-r-lg ${infoActive ? "text-blue-6 bg-blue-2" : "text-gray-7 bg-white/85 hover:bg-white"}`}
           data-test="MapLayerTree-info"
           onClick={() => {
             return setInfoActive(!infoActive);

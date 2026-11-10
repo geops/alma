@@ -23,7 +23,7 @@ export default function AlmaTextarea({
 
   const text = useWatch({ name }) as string;
 
-  const fieldState = getFieldState(name);
+  const fieldState = getFieldState(name, formState);
 
   const errorClassName = fieldState?.error
     ? tw`border-red-3 bg-red-2`

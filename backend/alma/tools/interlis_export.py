@@ -171,7 +171,7 @@ def export(
 ):
     export_type = export_type.lower()
     # new export_types must also be added in class InterlisExportSettings
-    if export_type not in ["kbs_v1_5", "oereb_v2_0", "be", "vd"]:
+    if export_type not in ["kbs_v1_5", "oereb_v2_0", "be", "vd", "lu", "so", "so_restricted"]:
         logger.error('Export type "%s" is not implemented.', export_type)
 
     query = getattr(settings.interlis_export_settings, f"{export_type}_query")
@@ -198,10 +198,10 @@ def export(
         )
         string = xtf
         xtf = string.replace(b"model_bl", b"ch_bl_aue_kbs_intern_v1_0")
-        if export_type == "so_pub":
+        if export_type == "so":
             string = xtf
             xtf = string.replace(b"model_so", b"SO_AFU_KbS_Publikation__20230104")
-        if export_type == "so_res":
+        if export_type == "so_restricted":
             string = xtf
             xtf = string.replace(
                 b"model_so", b"SO_AFU_KbS_Publikation_restricted_20221209"

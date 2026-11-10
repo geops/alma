@@ -1,3 +1,7 @@
+import ImageLayer from "ol/layer/Image";
+import TileLayer from "ol/layer/Tile";
+import ImageWMS from "ol/source/ImageWMS";
+import TileWMS from "ol/source/TileWMS";
 import { useEffect, useState } from "react";
 import useMap from "react-spatial/useMap";
 
@@ -40,14 +44,68 @@ function MapExtent() {
   );
 }
 
+function MapLayerSource() {
+  const map = useMap();
+  const [sourceType, setSourceType] = useState("");
+
+  useEffect(() => {
+    const layers = map.getLayers();
+    const updateSourceType = () => {
+      const layer = layers.item(0);
+      if (layer instanceof ImageLayer || layer instanceof TileLayer) {
+        const source: unknown = layer.getSource();
+        if (source instanceof ImageWMS) {
+          setSourceType("image");
+          return;
+        }
+        if (source instanceof TileWMS) {
+          setSourceType("tile");
+          return;
+        }
+      }
+      setSourceType("");
+    };
+    layers.on("add", updateSourceType);
+    layers.on("remove", updateSourceType);
+    const frame = requestAnimationFrame(updateSourceType);
+    return () => {
+      cancelAnimationFrame(frame);
+      layers.un("add", updateSourceType);
+      layers.un("remove", updateSourceType);
+    };
+  }, [map]);
+
+  return <div data-test="base-layer-source">{sourceType}</div>;
+}
+
 describe("Map component", () => {
   beforeEach(() => {
     cy.clearAllLocalStorage();
-    cy.intercept("POST", "/graphql", (req) => {
+    cy.intercept<{ query?: string }>("POST", "/graphql", (req) => {
       if (req.body.query?.includes("mutation updateUserSetting")) {
         req.alias = "updateUserSetting";
         req.reply({ data: {} });
       }
+    });
+  });
+
+  [undefined, true, false].forEach((tiled) => {
+    it(`uses ${tiled === false ? "image" : "tile"} WMS with tiled=${String(tiled)}`, () => {
+      cy.stubSettings([
+        {
+          key: "ui.map.baseLayers",
+          value: [{ key: "foo", layer: "test-layer", tiled, url: "/wms" }],
+        },
+      ]);
+      cy.mount(
+        <Map className="h-screen">
+          <MapLayerSource />
+        </Map>,
+      );
+      cy.get("[data-test=base-layer-source]").should(
+        "have.text",
+        tiled === false ? "image" : "tile",
+      );
     });
   });
 
@@ -95,6 +153,13 @@ describe("Map component", () => {
   });
 
   it("supports custom base layers and max extent", () => {
+    cy.intercept("GET", "/map/baselayer-foo.png", {
+      fixture: "vflz/overview-map.png",
+      headers: {
+        "cache-control": "no-store",
+        "content-type": "image/png",
+      },
+    });
     cy.stubSettings([
       { key: "ui.map.baseLayers", value: [{ key: "foo" }] },
       { key: "ui.map.maxExtent", value: [2485000, 1007000, 2486000, 1008000] },
@@ -106,8 +171,13 @@ describe("Map component", () => {
     );
     cy.contains("[data-test=extent]", "2485000,1007000,2486000,1008000");
     cy.get("button.alma-map-base-layer-toggle")
-      .find("img")
-      .should("have.attr", "src", "/map/baselayer-foo.png");
+      .find<HTMLImageElement>("img")
+      .should("have.attr", "src", "/map/baselayer-foo.png")
+      .and(($img) => {
+        const image = $img[0];
+        expect(image.complete).to.equal(true);
+        expect(image.naturalWidth).to.be.greaterThan(0);
+      });
   });
 
   it("renders small map with map search", () => {

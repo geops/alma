@@ -3541,7 +3541,6 @@ begin
     ;
 
     update alma.wf_node set note = null where type != 'document';
-    update alma.wf_node set updated_by = null where "type" in ('document');
     update alma.wf_node set created_by = null where "type" in ('form', 'document');
 
     return jsonb_build_object(
@@ -3840,7 +3839,7 @@ document_steps as (
         on task_nodes.wf_node_id = document_node.parent_id
     join wf_workflow.step
         on step.tas_uid = task_nodes.tas_uid
-        and step.step_uid = document_node.erfasser
+        and step.step_uid = document_node.created_by
     where document_node.type = 'document'
 ),
 processmaker_nodes as (
@@ -4082,7 +4081,7 @@ document_steps as (
         on task_nodes.wf_node_id = document_node.parent_id
     join wf_workflow.step
         on step.tas_uid = task_nodes.tas_uid
-        and step.step_uid = document_node.erfasser
+        and step.step_uid = document_node.created_by
     where document_node.type = 'document'
 ),
 processmaker_nodes as (
@@ -4530,5 +4529,25 @@ where alma.wf_node.wf_node_id = form_data_by_node.wf_node_id
                 and wc.title like 'Imported ProcessMaker%'
         ) unmatched
     );
+
+    raise notice 'Removing counter suffix from wf_node titles';
+    update alma.wf_node set title = regexp_replace(title, ' \([0-9]+\)$', '') where title ~ ' \([0-9]+\)$';
+
+    raise notice 'Updating document node titles based on altlast.pm_doc';
+    update alma.wf_node doc_node
+        set title = coalesce(pd.app_doc_title, doc_node.title)
+    from altlast.pm_doc pd
+    where
+        doc_node."type" = 'document'
+        and coalesce(pd.app_doc_comment, '') = coalesce(doc_node.note, '')
+        and pd.pm_doc_id::text = doc_node.updated_by
+    ;
+    raise notice 'Updated document node titles from altlast.pm_doc: % rows', num_rows;
+
+    update alma.wf_node
+        set updated_by = null
+    where
+        "type" in ('document');
+
 end;
 $$ language plpgsql;
