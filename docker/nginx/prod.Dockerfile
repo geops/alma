@@ -13,7 +13,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY frontend ./
 RUN CI=true pnpm build
 
-FROM nginx:1.27
+FROM nginxinc/nginx-unprivileged:1.27
 
 COPY --from=frontend /frontend/out /var/www/alma-frontend
 COPY --from=frontend /frontend/next-routes.conf /srv/alma/
@@ -23,5 +23,11 @@ COPY docker/nginx/review.htpasswd /etc/nginx/review.htpasswd
 COPY docker/nginx/basic_auth.conf /etc/nginx/interlis_exports.conf
 COPY docker/nginx/basic_auth.conf /etc/nginx/report_exports.conf
 COPY docker/nginx/basic_auth.conf /etc/nginx/kbs_mapserver.conf
+
+# Make filesystem permissions compatible with arbitrary UIDs (OpenShift style).
+USER root
+RUN chgrp -R 0 /var/cache/nginx /var/log/nginx \
+    && chmod -R g+rwX /var/cache/nginx /var/log/nginx
+USER 101
 
 CMD ["nginx", "-g", "daemon off;"]

@@ -46,7 +46,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_de_v USING UNIQUE vflz_id USING SRID=2056"
 
         METADATA
@@ -78,7 +78,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_de_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "01"
         FILTERITEM "code_vftyp"
@@ -112,7 +112,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_fr_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "01"
         FILTERITEM "code_vftyp"
@@ -146,7 +146,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_it_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "01"
         FILTERITEM "code_vftyp"
@@ -180,7 +180,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_de_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "02"
         FILTERITEM "code_vftyp"
@@ -214,7 +214,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_fr_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "02"
         FILTERITEM "code_vftyp"
@@ -248,7 +248,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_it_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "02"
         FILTERITEM "code_vftyp"
@@ -282,7 +282,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_de_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "03"
         FILTERITEM "code_vftyp"
@@ -316,7 +316,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_fr_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "03"
         FILTERITEM "code_vftyp"
@@ -350,7 +350,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_it_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "03"
         FILTERITEM "code_vftyp"
@@ -384,7 +384,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_de_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "04"
         FILTERITEM "code_vftyp"
@@ -418,7 +418,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_fr_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "04"
         FILTERITEM "code_vftyp"
@@ -452,7 +452,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_current_all_it_v USING UNIQUE vflz_id USING SRID=2056"
         FILTER "04"
         FILTERITEM "code_vftyp"
@@ -486,7 +486,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_ispublished_de_v USING UNIQUE vflz_id USING SRID=2056"
 
         METADATA
@@ -518,7 +518,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_ispublished_fr_v USING UNIQUE vflz_id USING SRID=2056"
 
         METADATA
@@ -550,7 +550,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.wfs_vflz_ispublished_it_v USING UNIQUE vflz_id USING SRID=2056"
 
         METADATA
@@ -592,7 +592,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.geoportal_fr USING UNIQUE vflz_id USING SRID=2056"
 
         METADATA
@@ -614,7 +614,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma_export.tg_kbs_intern USING UNIQUE mapserver_id USING SRID=2056"
 
         METADATA

@@ -1,8 +1,9 @@
 services:
   # alma database
   db:
-    image: registry.geops.com/geops/alma/alma-db:${TAG:-latest}
+    image: registry.geops.com/geops/alma/alma-db-no-tls:${TAG:-latest}
     build:
+      target: final-no-tls
       context: .
       dockerfile: ./docker/db/Dockerfile
     environment:
@@ -155,6 +156,7 @@ services:
     volumes:
       - interlis_exports:/var/www/interlis_exports:ro
       - report_exports:/var/www/report_exports:ro
+      - ./docker/nginx/prod-no-tls.conf:/etc/nginx/conf.d/default.conf
 
   # Alternative frontend that proxies to the Next.js dev server
   nginx_dev:
@@ -188,8 +190,9 @@ services:
       - backend
 
   mapserver:
-    image: registry.geops.com/geops/alma/alma-mapserver:${TAG:-latest}
+    image: registry.geops.com/geops/alma/alma-mapserver-no-tls:${TAG:-latest}
     build:
+      target: final-no-tls
       dockerfile: ./docker/mapserver/Dockerfile
     links:
       - db

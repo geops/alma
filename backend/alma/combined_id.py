@@ -507,12 +507,13 @@ class BfsAbusLfdFactory(FactoryTemplate):
     ):
         assert gemeinde
         standort_typ = StandortTyp(vftyp.code)
-        stamm = f"{gemeinde.bfs_nummer:0>4}{cls.standort_typ_map[standort_typ]}"
+        stamm = f"{gemeinde.bfs_nummer}{cls.standort_typ_map[standort_typ]}"
         suffixes = get_suffixes(session, stamm)
         last_laufende_nummer = get_last_laufende_nummer(
             suffixes, cls.lfd_nummer_regex, False
         )
         return f"{stamm}{last_laufende_nummer + 1:0>4}"
+
 
 class AaBfsLfdDotFactory(FactoryTemplate):
     lfd_nummer_regex = r"^[0-9]{4}$"
@@ -581,7 +582,6 @@ COMBINED_ID_FACTORY_MAPPING: dict[CombinedIdFactoryName, type[FactoryTemplate]] 
     CombinedIdFactoryName.INTERNAL_BFS_ABUS_LFD_UNDERSCORE_TWICE: InternalBfsABUSLfdUnderscoreFactoryTwice,
     CombinedIdFactoryName.BFS_ABUS_LFD: BfsAbusLfdFactory,
     CombinedIdFactoryName.AA_BFS_LFD_DOT: AaBfsLfdDotFactory,
-
 }
 
 TEILSTANDORT_ID_FACTORY_MAPPING = {

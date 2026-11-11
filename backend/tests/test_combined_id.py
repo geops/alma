@@ -28,7 +28,7 @@ pytestmark = [
         (["101 D 0001", "101 D 02", "101 D 05"], "code:63:01", "101 D 06"),
         (["101 D 0001", "101 D 02", "101 D 05"], "code:63:02", "101 S 01"),
         (["101 D 0001", "101 D 02", "101 B 05"], "code:63:01", "101 D 03"),
-        (["101 D 0001", "101 D 02", "101 B 98"], "code:63:02", "101 S 99"),
+        (["101 D 0001", "101 D 02", "101 S 98"], "code:63:02", "101 S 99"),
         (["101 D 0001", "101 D 02", "101 B 06"], "code:63:04", "101 S 01"),
     ],
 )
@@ -89,7 +89,9 @@ def test_laufende_nummer_resets_for_new_gemeinde(session, test_settings):
 
 def test_get_teilstandort_nummer(session, test_settings):
     settings.combined_id_factory = CombinedIdFactoryName.BFS_DBUS_LFD_WHITESPACES
-    settings.teilstandort_combined_id_factory = TeilstandortCombinedIdFactoryName.DOT_NUMBER
+    settings.teilstandort_combined_id_factory = (
+        TeilstandortCombinedIdFactoryName.DOT_NUMBER
+    )
 
     objekt = vflz_models.Objekt()
     session.add(objekt)
@@ -565,6 +567,7 @@ def test_bfs_abus_lfd_factory(session, test_settings):
         )
         == "200A0006"
     )
+
 
 def test_aa_bfs_lfd_dot_factory(session, test_settings):
     settings.combined_id_factory = CombinedIdFactoryName.AA_BFS_LFD_DOT

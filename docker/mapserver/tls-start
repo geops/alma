@@ -1,0 +1,19 @@
+#!/bin/bash
+# start script of the TLS image (alma-mapserver, build target final-tls).
+# The certificate paths are required (set by docker compose, no defaults):
+#   MAPSERVER_TLS_CERT_FILE / MAPSERVER_TLS_KEY_FILE  HTTPS server (alma-tls.conf)
+#   MAPSERVER_TLS_CA_FILE                             verifies the database (sslmode=verify-full)
+# Fills in the CA path baked into the .map files, then runs the regular start script.
+set -eu
+for v in MAPSERVER_TLS_CERT_FILE MAPSERVER_TLS_KEY_FILE MAPSERVER_TLS_CA_FILE; do
+  if [ -z "${!v:-}" ]; then
+    echo "$v is not set (required by the TLS image). Exiting." >&2
+    exit 1
+  fi
+  if [ ! -r "${!v}" ]; then
+    echo "$v='${!v}' is not readable. Exiting." >&2
+    exit 1
+  fi
+done
+find /etc/mapserver -type f -exec sed -i "s|\${MAPSERVER_TLS_CA_FILE}|$MAPSERVER_TLS_CA_FILE|g" {} +
+exec /usr/local/bin/replace-variables-and-start

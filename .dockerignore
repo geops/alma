@@ -1,0 +1,3 @@
+# ALTLAGA-10: never bake TLS keys or locally generated certificates into images
+certs/
+**/*.key

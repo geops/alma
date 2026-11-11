@@ -67,6 +67,50 @@ image from the sources in this repository.
 | `email`     | Debug SMTP server for local development                             |
 | `scheduler` | Cron jobs                                                           |
 
+## TLS for internal connections (ALTLAGA-10)
+
+By default, TLS is enabled between the containers. Except for db and mapserver, the same base images may be used.
+For db and mapserver, entrypoints differ. We provide a `-no-tls` target/image tag to disable TLS.
+
+TLS is enabled by setting respective environment variables.
+
+Review apps and tests run without TLS enabled. For documentation, please refer to [confluence](https://confluence.geops.com/pages/viewpage.action?pageId=241797748).
+
+The images contain no certificates. Most TLS images read the certificate paths
+from environment variables that docker compose sets (`PG_TLS_*`, `ALMA_TLS_*`,
+`KC_HTTPS_*`, `MAPSERVER_TLS_*`, see below). nginx is the exception: its config
+uses the fixed mount paths `/certs/tls.crt`, `/certs/tls.key`, `/certs/ca.crt`
+directly. The mount target in the compose file and the variable (where used)
+must agree.
+
+Running locally:
+
+* certificates must be provided locally. Check `docker-compose.tls.yaml` for volume mounts.
+* `docker compose up` / `make start-services` – plaintext (`-no-tls` images),
+  no certificates needed.
+* `TLS_ENABLED=true make start-services` (or
+  `docker compose -f docker-compose.yml -f docker-compose.tls.yml up`) – TLS
+  images, certificates mounted from `./certs`, cert-path variables set, https on
+  the host ports. e2e tests run plaintext only
+  (`make e2e-tests`). The local backend dev server (uvicorn, hot reload) stays
+  env-driven (`UVICORN_SSL_*`).
+
+
+
+### Environment interface of the TLS images (set by compose, no defaults)
+
+| Component  | Variables |
+| ---------- | --------- |
+| db         | `PG_TLS_CERT_FILE`, `PG_TLS_KEY_FILE` (required); `PG_TLS_RUNTIME_DIR` (set in the image), `POSTGRES_HOST_AUTH_METHOD` |
+| libpq clients | `PGSSLMODE`, `PGSSLROOTCERT` |
+| backend    | `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GDAL_CURL_CA_BUNDLE` (combined bundle), `GUNICORN_CMD_ARGS=--certfile=... --keyfile=...` (gunicorn of the TLS image) / `UVICORN_SSL_CERTFILE`, `UVICORN_SSL_KEYFILE` (local dev server), `OIDC_BASE_URL`, `MONITORING_*_URL` |
+| keycloak   | (`KC_HTTP_ENABLED=false` baked in) `KC_HTTPS_PORT`, `KC_HTTPS_CERTIFICATE_FILE`, `KC_HTTPS_CERTIFICATE_KEY_FILE`, `KC_HTTPS_PROTOCOLS`, `KC_DB_URL_PROPERTIES`, `KC_HOSTNAME` |
+| db_migrate | `FLYWAY_URL=…?sslmode=require` |
+| mapserver  | `MAPSERVER_TLS_CERT_FILE`, `MAPSERVER_TLS_KEY_FILE`, `MAPSERVER_TLS_CA_FILE`, `MAPSERVER_URL` |
+| nginx      | none – certificates are mounted at the fixed paths `/certs/tls.crt`, `/certs/tls.key`, `/certs/ca.crt` (hardcoded in the config) |
+| cypress    | `CYPRESS_BASE_URL`, `NODE_EXTRA_CA_CERTS` |
+| Helm       | review apps run plaintext: the chart uses the `-no-tls` images, no certificates |
+
 ## Configure authentication for deployments
 
 We use keycloak for authentication either directly or via an external identity provider.

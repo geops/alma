@@ -1,0 +1,140 @@
+# ALTLAGA-10: TLS variant of the local stack.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up
+#   (or: TLS_ENABLED=true make start-services)
+#
+# DB/DB-migrate/Mapserver production images exist in two variants, selected at build time:
+#   <name>          TLS baked in (build target final-tls)
+#   <name>-no-tls   plaintext    (build target final-no-tls, used by the base file)
+# This override swaps to the TLS images, mounts the certificates from ./certs
+# (provided out of band, not generated here) and sets the certificate PATHS via
+# environment variables. The images contain no default paths: mount target and
+# variable must agree. Host-published ports stay the same, only the scheme
+# changes (http -> https).
+#
+# Expected certificate files in ./certs:
+#   ./certs/ca.crt          alma CA                -> /certs/ca.crt
+#   ./certs/ca-bundle.crt   system roots + alma CA -> /certs/ca-bundle.crt
+#   ./certs/alma.crt/.key   shared leaf (all SANs) -> /certs/tls.crt/.key
+
+services:
+  db:
+    image: registry.geops.com/geops/alma/alma-db:${TAG:-latest}
+    build:
+      target: final-tls
+      context: .
+      dockerfile: ./docker/db/Dockerfile
+    environment:
+      PG_TLS_CERT_FILE: /certs/tls.crt
+      PG_TLS_KEY_FILE: /certs/tls.key
+      # clients started inside this container (psql, pg_restore) verify the server
+      PGSSLMODE: require
+      PGSSLROOTCERT: /certs/ca.crt
+    # log_connections shows the TLS protocol of every session
+    command: -c shared_preload_libraries='anon' -c log_connections=on
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+      - ./certs/alma.crt:/certs/tls.crt:ro
+      - ./certs/alma.key:/certs/tls.key:ro
+
+  # one-shot client: encrypted, server certificate not verified
+  db_migrate:
+    image: registry.geops.com/geops/alma/alma-db_migrate:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./docker/db_migrate/Dockerfile
+    environment:
+      FLYWAY_URL: jdbc:postgresql://db:5432/alma?sslmode=require
+
+  backend:
+    environment: &backend-tls-env
+      # libpq / psycopg: long-lived client, full verification
+      PGSSLMODE: verify-full
+      PGSSLROOTCERT: /certs/ca.crt
+      # outgoing HTTPS (httpx, requests, urllib, weasyprint, GDAL):
+      # system roots + alma CA
+      SSL_CERT_FILE: /certs/ca-bundle.crt
+      REQUESTS_CA_BUNDLE: /certs/ca-bundle.crt
+      CURL_CA_BUNDLE: /certs/ca-bundle.crt
+      GDAL_CURL_CA_BUNDLE: /certs/ca-bundle.crt
+      # internal service URLs
+      OIDC_BASE_URL: https://keycloak:8443/auth
+      MONITORING_GRAPHQL_SERVICE_URL: https://nginx:8443/graphql
+      MONITORING_NGINX_SERVICE_URL: https://nginx:8443
+      MONITORING_SCREENSHOT_SERVICE_URL: https://shootme:8002
+      MONITORING_SCREENSHOT_TARGET_URL: https://nginx:8443
+      # HTTPS server of the TLS image: gunicorn reads GUNICORN_CMD_ARGS natively.
+      # (the local dev server below uses uvicorn and UVICORN_SSL_* instead)
+      GUNICORN_CMD_ARGS: --certfile=/certs/tls.crt --keyfile=/certs/tls.key
+      # ... and of the local dev server (uvicorn CLI reads UVICORN_* variables)
+      UVICORN_SSL_CERTFILE: /certs/tls.crt
+      UVICORN_SSL_KEYFILE: /certs/tls.key
+    # local development: fastapi dev does not read UVICORN_SSL_*, use the uvicorn
+    # CLI (auto-reload). Remove this command to run the image's gunicorn instead.
+    command: -m uvicorn alma.api:app --reload --reload-dir /app/src/alma --host 0.0.0.0 --port 8000
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+      - ./certs/ca-bundle.crt:/certs/ca-bundle.crt:ro
+      - ./certs/alma.crt:/certs/tls.crt:ro
+      - ./certs/alma.key:/certs/tls.key:ro
+
+  scheduler:
+    environment:
+      <<: *backend-tls-env
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+      - ./certs/ca-bundle.crt:/certs/ca-bundle.crt:ro
+
+  # one-shot test runs: encrypted, server certificate not verified
+  backend_dev:
+    environment:
+      PGSSLMODE: require
+
+  keycloak:
+    environment:
+      - KC_HOSTNAME=https://localhost:8080/auth
+      - KC_HTTPS_PORT=8443
+      - KC_HTTPS_CERTIFICATE_FILE=/certs/tls.crt
+      - KC_HTTPS_CERTIFICATE_KEY_FILE=/certs/tls.key
+      - KC_HTTPS_PROTOCOLS=TLSv1.3,TLSv1.2
+      - KC_HTTP_ENABLED=false
+      # management interface (health, metrics) on :9000 uses the same certificate
+      # pgjdbc: long-lived client, full verification against the alma CA
+      - KC_DB_URL_PROPERTIES=?sslmode=verify-full&sslrootcert=/certs/ca.crt
+    volumes:
+      - ./docker/keycloak/initial-tls.json:/opt/keycloak/data/import/initial.json
+
+  mapserver:
+    image: registry.geops.com/geops/alma/alma-mapserver:${TAG:-latest}
+    build:
+      target: final-tls
+    environment:
+      MAPSERVER_URL: https://localhost:8080/mapserver
+      MAPSERVER_TLS_CERT_FILE: /certs/tls.crt
+      MAPSERVER_TLS_KEY_FILE: /certs/tls.key
+      MAPSERVER_TLS_CA_FILE: /certs/ca.crt
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+      - ./certs/alma.crt:/certs/tls.crt:ro
+      - ./certs/alma.key:/certs/tls.key:ro
+
+  # HTTPS on 8443; :9090 is closed. Host port 8080 stays, scheme is https.
+  nginx:
+    ports: !override
+      - 127.0.0.1:8080:8443
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+      - ./certs/alma.crt:/certs/tls.crt:ro
+      - ./certs/alma.key:/certs/tls.key:ro
+
+  # shootme serves HTTPS (gunicorn, GUNICORN_CMD_ARGS) and its headless chromium
+  # trusts the alma CA.
+  shootme:
+    environment:
+      ALLOW_LIST_SCREENSHOT_URLS: https://nginx:8443
+      GUNICORN_CMD_ARGS: --certfile=/certs/tls.crt --keyfile=/certs/tls.key
+      SHOOTME_CA_CERT: /certs/ca.crt
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+      - ./certs/alma.crt:/certs/tls.crt:ro
+      - ./certs/alma.key:/certs/tls.key:ro

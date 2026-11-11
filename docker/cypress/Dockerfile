@@ -4,7 +4,7 @@ WORKDIR /frontend
 
 COPY --chown=node:node frontend ./
 
-ENV CYPRESS_BASE_URL=http://nginx
+ENV CYPRESS_BASE_URL=http://nginx:9090
 ENV COREPACK_INTEGRITY_KEYS=0
 
 # Requires root privileges

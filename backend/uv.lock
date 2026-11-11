@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.11.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -58,6 +58,7 @@ dev = [
     { name = "coverage" },
     { name = "freezegun" },
     { name = "httpx2-pytest" },
+    { name = "nodeenv" },
     { name = "pip-tools" },
     { name = "pre-commit" },
     { name = "pyright" },
@@ -94,7 +95,7 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "sentry-sdk", extras = ["fastapi"] },
     { name = "shapely" },
-    { name = "sqlalchemy", specifier = "~=2.0" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "starlette" },
     { name = "strawberry-graphql", extras = ["cli", "fastapi"] },
     { name = "weasyprint", specifier = "~=69.0" },

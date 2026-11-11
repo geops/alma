@@ -29,6 +29,13 @@ def format_thousands(value: Any) -> str:
 def create_report_environment(template_dir: str) -> Environment:
     env = Environment(loader=FileSystemLoader(template_dir), autoescape=True)
     env.filters["format_thousands"] = format_thousands  # pyright: ignore[reportUnknownMemberType]
+    # Internal service URLs used by map templates (screenshot of the vflz map).
+    env.globals["screenshot_service_url"] = str(  # pyright: ignore[reportUnknownMemberType]
+        settings.monitoring_settings.screenshot_service_url
+    ).rstrip("/")
+    env.globals["screenshot_target_url"] = str(  # pyright: ignore[reportUnknownMemberType]
+        settings.monitoring_settings.screenshot_target_url
+    ).rstrip("/")
     return env
 
 

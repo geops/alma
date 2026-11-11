@@ -52,7 +52,7 @@ def screenshot_health_check(session: Session):
         if not first_vflz:
             return
         screenshot_url = urljoin(
-            str(settings.monitoring_settings.nginx_service_url),
+            str(settings.monitoring_settings.screenshot_target_url),
             f"/vflz/{first_vflz.vflz_id}/",
         )
         url = urljoin(
@@ -198,7 +198,7 @@ def keycloak_health_check(session: Session):
         monitor_task_status(session, "keycloak", TaskCategory.APPLICATION),
         get_keycloak_client() as keycloak_client,
     ):
-        response = keycloak_client.get(url="http://keycloak:8080/auth/admin/realms")
+        response = keycloak_client.get(url=settings.oidc.keycloak_url("admin/realms"))
         response.raise_for_status()
 
 

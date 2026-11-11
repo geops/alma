@@ -32,6 +32,8 @@ class SentrySettings(BaseSettings):
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="db_")
 
+    # TLS is configured via the libpq environment variables
+    # PGSSLMODE / PGSSLROOTCERT, never in this URL.
     # checkov:skip=CKV_SECRET_4 ignore credentials
     url: str = "postgresql://alma:alma@db/alma"
     # checkov:skip=CKV_SECRET_4 ignore credentials
@@ -235,6 +237,7 @@ class MonitoringSettings(BaseSettings):
     graphql_service_url: HttpUrl = HttpUrl("http://nginx/graphql")
     screenshot_service_url: HttpUrl = HttpUrl("http://shootme:8002")
     nginx_service_url: HttpUrl = HttpUrl("http://nginx")
+    screenshot_target_url: HttpUrl = HttpUrl("http://nginx")
     search_export_query: str = ""
     user_sub: str | None = None
     min_update_interval_in_days: int = Field(default=7, ge=1)

@@ -373,10 +373,16 @@ def test_search_export_with_successful_download_url_returns_ok(
 
 
 @freeze_time("2021-02-02")
-def test_keycloak_raises_error(session, httpx2_mock):
+@pytest.mark.parametrize(
+    "base_url",
+    # plaintext (default) and TLS mode (ALTLAGA-10)
+    ["http://keycloak:8080/auth", "https://keycloak:8443/auth"],
+)
+def test_keycloak_raises_error(session, httpx2_mock, monkeypatch, base_url):
+    monkeypatch.setattr(settings.oidc, "base_url", base_url)
     httpx2_mock.add_response(method="POST", json={"access_token": "dummy-token"})
     httpx2_mock.add_response(
-        method="GET", url="http://keycloak:8080/auth/admin/realms", status_code=404
+        method="GET", url=f"{base_url}/admin/realms", status_code=404
     )
 
     with pytest.raises(httpx2.HTTPStatusError):

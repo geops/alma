@@ -41,7 +41,7 @@ MAP
         TYPE POLYGON
         STATUS ON
         CONNECTIONTYPE POSTGIS
-        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}'"
+        CONNECTION "dbname='alma' host='db' port='5432' user='${MAPSERVER_POSTGRES_USER}' password='${MAPSERVER_POSTGRES_PASSWORD}' ${MAPSERVER_POSTGRES_SSL}"
         DATA "wkb_geometry FROM alma.flugplatz USING UNIQUE flugplatz_id USING SRID=2056"
         
         METADATA

@@ -10,13 +10,33 @@ ALMA_UPDATE_FILE := include/updates_golives/$(source)_updates_golive.sql
 ALMA_DB_DUMP := alma_$(source).dump
 
 
+# ALTLAGA-10: when TLS_ENABLED=true (set by `TLS_ENABLED=true make start-services`) the tools
+# use the TLS db image and connect via TLS verified against the alma CA.
+# Default: plaintext. Certificates live in alma/certs.
+TLS_ENABLED ?= false
+CERTS_DIR := $(abspath ../certs)
+POSTGRES_IMAGE := registry.geops.com/geops/alma/alma-db-no-tls:$(or $(TAG),latest)
+POSTGRES_DSN := postgresql://alma:alma@db:5432/alma
+ifeq ($(TLS_ENABLED),true)
+POSTGRES_IMAGE := registry.geops.com/geops/alma/alma-db:$(or $(TAG),latest)
+POSTGRES_TLS_ARGS := -v $(CERTS_DIR)/ca.crt:/certs/ca.crt:ro \
+	-e PGSSLMODE=verify-full \
+	-e PGSSLROOTCERT=/certs/ca.crt
+POSTGRES_DSN := postgresql://alma:alma@db:5432/alma?sslmode=require
+# keep `docker compose run` (db_migrate Flyway JDBC, backend scripts) consistent
+# with POSTGRES_CMD above: use the TLS override so those connections are TLS too.
+# If the caller already set COMPOSE_FILE (TLS_ENABLED=true make start-services), keep it.
+export COMPOSE_FILE ?= $(abspath ..)/docker-compose.yml:$(abspath ..)/docker-compose.tls.yml
+endif
+
 POSTGRES_CMD := docker run \
 	--rm \
 	--network=$(network) \
 	-v ./include:/include:ro \
 	-v ./data:/data:ro \
+	$(POSTGRES_TLS_ARGS) \
 	--entrypoint "" \
-	registry.geops.com/geops/alma/alma-db:latest
+	$(POSTGRES_IMAGE)
 
 db-info:
 	docker compose run --rm db_migrate info
@@ -35,7 +55,7 @@ db-import-alma:
 	$(POSTGRES_CMD) pg_restore \
 		--single-transaction \
 		--disable-triggers \
-		-d postgresql://alma:alma@db:5432/alma /data/$(ALMA_DB_DUMP)
+		-d $(POSTGRES_DSN) /data/$(ALMA_DB_DUMP)
 	#checkov:skip=CKV_SECRET_4 ignore credentials
 
 db-import-alma-anon:
@@ -44,7 +64,7 @@ db-import-alma-anon:
 		--single-transaction \
 		--set="ON_ERROR_STOP=on" \
 		-f /data/$(ALMA_DB_DUMP) \
-		postgresql://alma:alma@db:5432/alma
+		$(POSTGRES_DSN)
 
 data/projects:
 	mkdir -p data
@@ -76,7 +96,7 @@ db-import-non-anonymized: data/projects data/processmaker db-import-settings db-
 		--schema=altlast_user \
 		--schema=altlast_version1 \
 		--schema=altlast_wfs \
-		-d postgresql://alma:alma@db:5432/alma \
+		-d $(POSTGRES_DSN) \
 		/data/projects
 	$(POSTGRES_CMD) pg_restore \
 		-Fc \
@@ -94,33 +114,33 @@ db-import-non-anonymized: data/projects data/processmaker db-import-settings db-
 		--table=content \
 		--table=import_document \
 		--table=output_document \
-		-d postgresql://alma:alma@db:5432/alma \
+		-d $(POSTGRES_DSN) \
 		/data/processmaker
-	docker compose run --rm -v "$(shell pwd)/data:/data/:ro" backend /app/src/scripts/import_processmaker_forms.py --db-url=postgresql://alma:alma@db:5432/alma --workflow-files=/data/workflow
+	docker compose run --rm -v "$(shell pwd)/data:/data/:ro" backend /app/src/scripts/import_processmaker_forms.py --db-url=$(POSTGRES_DSN) --workflow-files=/data/workflow
 	if [ -f $(ALTLAST_UPDATE_FILE) ]; then \
 		$(POSTGRES_CMD) psql \
-			-1 -f $(ALTLAST_UPDATE_FILE) postgresql://alma:alma@db:5432/alma; \
+			-1 -f $(ALTLAST_UPDATE_FILE) $(POSTGRES_DSN); \
 	fi
 	$(POSTGRES_CMD) psql \
-		-c "select import_altlast.check_all()" postgresql://alma:alma@db:5432/alma
+		-c "select import_altlast.check_all()" $(POSTGRES_DSN)
 	$(POSTGRES_CMD) psql \
-		-c "select import_altlast.import_all('$(source)')" postgresql://alma:alma@db:5432/alma
+		-c "select import_altlast.import_all('$(source)')" $(POSTGRES_DSN)
 	$(POSTGRES_CMD) psql \
-		-1 -f /include/insert_interlis_settings_demo.sql postgresql://alma:alma@db:5432/alma
+		-1 -f /include/insert_interlis_settings_demo.sql $(POSTGRES_DSN)
 	$(POSTGRES_CMD) psql \
-		-1 -f /include/import_system_users.sql postgresql://alma:alma@db:5432/alma
+		-1 -f /include/import_system_users.sql $(POSTGRES_DSN)
 	if [ -f $(ALMA_UPDATE_FILE) ]; then \
 		$(POSTGRES_CMD) psql \
-			-1 -f $(ALMA_UPDATE_FILE) postgresql://alma:alma@db:5432/alma; \
+			-1 -f $(ALMA_UPDATE_FILE) $(POSTGRES_DSN); \
 	fi
 	$(MAKE) db-import-translated-codelists
 
 db-import-system-users:
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_system_users.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_system_users.sql $(POSTGRES_DSN)
 
 load-demo-fixtures:
 	make db-import-system-users
-	$(POSTGRES_CMD) psql -1 -f /include/demo-fixtures.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -f /include/demo-fixtures.sql $(POSTGRES_DSN)
 
 db-export-demo:
 	rm -f data/alma_demo.dump
@@ -128,12 +148,12 @@ db-export-demo:
 		-Fc \
 		--exclude-schema='altlast*' \
 		--exclude-table='keycloak.*' \
-		-d postgresql://alma:alma@db:5432/alma \
+		-d $(POSTGRES_DSN) \
 	> ./data/alma_demo.dump
 
 # Fail if the demo data is missing (the dump was fetched but has no content)
 db-check-demo-data:
-	n=$$($(POSTGRES_CMD) psql -Atc "select count(*) from alma.vflz" postgresql://alma:alma@db:5432/alma); \
+	n=$$($(POSTGRES_CMD) psql -Atc "select count(*) from alma.vflz" $(POSTGRES_DSN)); \
 	echo "alma.vflz has $$n rows"; \
 	test "$$n" -ge 100
 
@@ -143,27 +163,27 @@ db-upload-demo:
 	curl -Ssf --netrc-optional --netrc-file "$(netrc)" --upload-file data/alma_demo.dump "https://demo.webdav.geops.de/alma_demo_backup.dump"
 
 db-configure-user:
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/e2e-configure-user.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/e2e-configure-user.sql $(POSTGRES_DSN)
 
 db-import-translations:
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_translations.sql postgresql://alma:alma@db:5432/alma
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/delete_translations.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_translations.sql $(POSTGRES_DSN)
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/delete_translations.sql $(POSTGRES_DSN)
 
 db-import-translations-test:
 	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_translations.sql postgresql://alma:alma@db:5432/alma_test
 	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/delete_translations.sql postgresql://alma:alma@db:5432/alma_test
 
 db-import-settings:
-	docker compose run --rm backend /app/src/scripts/import_settings.py --db-url=postgresql://alma:alma@db:5432/alma --settings-csv=/app/src/alma/default_instance_settings.csv
+	docker compose run --rm backend /app/src/scripts/import_settings.py --db-url=$(POSTGRES_DSN) --settings-csv=/app/src/alma/default_instance_settings.csv
 
 db-import-translated-codelists:
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_codes.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_codes.sql $(POSTGRES_DSN)
 
 db-import-additional-stoffgruppen:
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/insert_additional_stoffgruppen.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/insert_additional_stoffgruppen.sql $(POSTGRES_DSN)
 
 db-import-fixtures:
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/e2e-fixtures.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/e2e-fixtures.sql $(POSTGRES_DSN)
 
 db-export-fixtures:
 	$(POSTGRES_CMD) pg_dump \
@@ -171,23 +191,23 @@ db-export-fixtures:
 		--disable-triggers \
 		--schema=alma \
 		--schema=alma_external \
-		-d postgresql://alma:alma@db:5432/alma \
+		-d $(POSTGRES_DSN) \
 		> ./include/e2e-fixtures.sql
 
 db-import-kantone:
-	$(POSTGRES_CMD) psql -f /include/import_kantone.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -f /include/import_kantone.sql $(POSTGRES_DSN)
 
 db-import-report-configurations:
-	$(POSTGRES_CMD) psql -f /include/import_report_configurations.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -f /include/import_report_configurations.sql $(POSTGRES_DSN)
 
 db-import-flugplaetze:
-	$(POSTGRES_CMD) psql -f /include/import_flugplaetze.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -f /include/import_flugplaetze.sql $(POSTGRES_DSN)
 
 db-import-noga-codes:
-	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_noga_codes_25001.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -1 -v ON_ERROR_STOP=ON -f /include/import_noga_codes_25001.sql $(POSTGRES_DSN)
 
 db-insert-jahrestrends:
-	$(POSTGRES_CMD) psql -f /include/insert_demo_jahrestrends.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -f /include/insert_demo_jahrestrends.sql $(POSTGRES_DSN)
 
 # Commands required for data migration
 db-migration-pull-codes:
@@ -197,13 +217,13 @@ db-migration-pull-codes:
 db-migration-import-codes:
 	$(POSTGRES_CMD) psql -c \
 		'delete from alma.translations; delete from alma.cod; delete from alma.c_cli;' \
-		postgresql://alma:alma@db:5432/alma
+		$(POSTGRES_DSN)
 
 	$(POSTGRES_CMD) pg_restore \
 		--single-transaction \
 		--data-only \
 		--schema=alma \
-		-d postgresql://alma:alma@db:5432/alma data/$(source)/alma_$(source)_codes_translations.dump
+		-d $(POSTGRES_DSN) data/$(source)/alma_$(source)_codes_translations.dump
 
 db-migration-pull-wfs-cache:
 	mkdir -p data/$(source)
@@ -213,13 +233,13 @@ db-migration-pull-wfs-cache:
 db-migration-import-wfs-cache:
 	$(POSTGRES_CMD) psql -c \
 		'delete from alma_external.wfs_cache;' \
-		postgresql://alma:alma@db:5432/alma
+		$(POSTGRES_DSN)
 
 	$(POSTGRES_CMD) pg_restore \
 		--single-transaction \
 		--data-only \
 		--schema=alma_external \
-		-d postgresql://alma:alma@db:5432/alma data/$(source)/alma_$(source)_wfs_cache.dump
+		-d $(POSTGRES_DSN) data/$(source)/alma_$(source)_wfs_cache.dump
 
 db-export-alma:
 	rm -f data/$(ALMA_DB_DUMP)
@@ -227,7 +247,7 @@ db-export-alma:
 		-Fc \
 		--exclude-schema='altlast*' \
 		--disable-triggers \
-		-d postgresql://alma:alma@db:5432/alma \
+		-d $(POSTGRES_DSN) \
 	> ./data/$(ALMA_DB_DUMP)
 
 db-upload-alma:
@@ -244,4 +264,4 @@ db-generate-missing-preview-images:
 	docker compose run --rm backend -m alma.cli generate-missing-previews
 
 db-migrate-gwas:
-	$(POSTGRES_CMD) psql -f /include/migrate_gwas.sql postgresql://alma:alma@db:5432/alma
+	$(POSTGRES_CMD) psql -f /include/migrate_gwas.sql $(POSTGRES_DSN)

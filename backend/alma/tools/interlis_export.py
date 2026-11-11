@@ -171,7 +171,15 @@ def export(
 ):
     export_type = export_type.lower()
     # new export_types must also be added in class InterlisExportSettings
-    if export_type not in ["kbs_v1_5", "oereb_v2_0", "be", "vd", "lu", "so", "so_restricted"]:
+    if export_type not in [
+        "kbs_v1_5",
+        "oereb_v2_0",
+        "be",
+        "vd",
+        "lu",
+        "so",
+        "so_restricted",
+    ]:
         logger.error('Export type "%s" is not implemented.', export_type)
 
     query = getattr(settings.interlis_export_settings, f"{export_type}_query")

@@ -18,7 +18,7 @@ dependencies = [
     "psycopg2-binary",
     "fastapi[standard]",
     "strawberry-graphql[cli,fastapi]",
-    "sqlalchemy~=2.0",
+    "sqlalchemy>=2.0",
     "geoalchemy2",
     "shapely",
     "owslib",

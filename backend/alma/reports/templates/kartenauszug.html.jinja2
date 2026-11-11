@@ -21,7 +21,7 @@
                 </tr>
             </table>
             
-            <img id="map" src="http://shootme:8002/screenshot?selector=%23rendercomplete&device_scale_factor=2&width=1000&height=900&timeout=5000&url=http://nginx/vflz/{{ query_params[0].vflz_id }}/map?layers=parzellen&baselayer=aerial" alt="Platzhalter Karte" />
+            <img id="map" src="{{ screenshot_service_url }}/screenshot?selector=%23rendercomplete&device_scale_factor=2&width=1000&height=900&timeout=5000&url={{ screenshot_target_url }}/vflz/{{ query_params[0].vflz_id }}/map?layers=parzellen&baselayer=aerial" alt="Platzhalter Karte" />
             <figcaption> &#169; {{ translations['report.kartenauszug.datenquelle'] }}</figcaption>
             <h3>{{ translations['report.kartenauszug.legende.h3'] }}</h3>
             <table id="legendtable">
