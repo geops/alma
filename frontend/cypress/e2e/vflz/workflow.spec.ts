@@ -3,21 +3,25 @@ describe("Vflz Workflow Page", () => {
     cy.intercept<{ query: string }>("POST", "/graphql", (req) => {
       if (req.body.query.includes("query VflzWorkflowLayout")) {
         req.alias = "VflzWorkflowLayout";
+      } else if (req.body.query.includes("query startTaskDialogProzesse")) {
+        req.alias = "StartTaskDialogProzesse";
       } else if (req.body.query.includes("query VflzWorkflow")) {
         req.alias = "VflzWorkflow";
       } else if (req.body.query.includes("query task")) {
         req.alias = "Task";
-      } else if (req.body.query.includes("mutation createNotiz")) {
+      } else if (req.body.query.includes("mutation createStandortNotiz")) {
         req.alias = "createNotiz";
-      } else if (req.body.query.includes("mutation createDokument")) {
+      } else if (req.body.query.includes("mutation createStandortDokument")) {
         req.alias = "createDokument";
-      } else if (req.body.query.includes("mutation createAufgabe")) {
+      } else if (req.body.query.includes("mutation createStandortAufgabe")) {
         req.alias = "createAufgabe";
       } else if (req.body.query.includes("mutation deleteTask")) {
         req.alias = "deleteTask";
-      } else if (req.body.query.includes("mutation startFolgeschritt")) {
-        req.alias = "startFolgeschritt";
-      } else if (req.body.query.includes("mutation startProzess")) {
+      } else if (
+        req.body.query.includes("mutation startStandortFolgeschritt")
+      ) {
+        req.alias = "startStandortFolgeschritt";
+      } else if (req.body.query.includes("mutation startStandortProzess")) {
         req.alias = "startProzess";
       } else if (req.body.query.includes("mutation updateDokument")) {
         req.alias = "updateDokument";
@@ -77,7 +81,7 @@ describe("Vflz Workflow Page", () => {
       (vflzId) => {
         cy.visit(`/vflz/${vflzId}/workflow`);
         cy.wait(["@VflzWorkflowLayout", "@VflzWorkflow"]);
-        cy.get("button[data-test=Workflow-startProzess]").click({
+        cy.get("button[data-test=StartTaskDialog-toggle]").click({
           force: true,
         });
         cy.get("button[data-test=Workflow-createAUFGABE]").click();
@@ -102,12 +106,38 @@ describe("Vflz Workflow Page", () => {
     cy.setUser("bearbeiten-geschaefte");
     cy.updateUserSetting("bearbeiten-geschaefte", "workflow.filter", "");
     cy.createVflz({ bezeichnung: "Workflow Test" }).then((vflzId) => {
+      const visibleDialog = () =>
+        cy.get('[data-dialog="dialog-body"]:visible').last();
+      const visibleMenu = () => cy.get("div[role=menu]:visible").last();
+      const selectDialogOption = (label: string) => {
+        cy.get("[role=option]:visible").should("exist");
+        cy.contains("[role=option]:visible", label).click();
+      };
+      const clickActionMenuItem = (dataTest: string) => {
+        cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
+          force: true,
+        });
+        visibleMenu().find(`button[data-test=${dataTest}]`).click({
+          force: true,
+        });
+      };
+      const confirmDeleteTask = () => {
+        visibleDialog().contains("button", "Löschen").click();
+        cy.wait("@deleteTask");
+        cy.wait("@VflzWorkflow");
+      };
+      const revisitWorkflow = () => {
+        cy.visit(`/vflz/${vflzId}/workflow`);
+        cy.wait("@VflzWorkflowLayout");
+        cy.wait("@VflzWorkflow");
+      };
+
       cy.visit(`/vflz/${vflzId}/workflow`);
       cy.wait("@VflzWorkflowLayout");
       cy.wait("@VflzWorkflow");
 
       ["Notiz", "Dokument", "Aufgabe"].forEach((type) => {
-        cy.get("button[data-test=Workflow-startProzess]").click({
+        cy.get("button[data-test=StartTaskDialog-toggle]").click({
           force: true,
         });
         cy.get(
@@ -117,34 +147,25 @@ describe("Vflz Workflow Page", () => {
         cy.wait("@Task");
         cy.get("div[data-test^=Workflow-item]").contains(type);
         cy.get("div[data-test=Workflow-taskTitle]").contains(type);
-        cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-          force: true,
-        });
-        cy.get("button[data-test=WorkflowActionMenu-deleteTask]").click({
-          force: true,
-        });
-        cy.get("div[role=dialog] button").contains("Löschen").click();
-        cy.wait("@deleteTask");
-        cy.wait("@VflzWorkflow");
+        clickActionMenuItem("WorkflowActionMenu-deleteTask");
+        confirmDeleteTask();
       });
 
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(300); // wait for React to finish rendering
-      cy.get("button[data-test=Workflow-startProzess]").click({
+      cy.get("button[data-test=StartTaskDialog-toggle]").click({
         force: true,
       });
-      cy.get("div[role=dialog] button[name=optionId]").click();
-      cy.get("div[role=dialog] div[role=option]")
-        .contains("Erstbeurteilung")
-        .click();
-      cy.get("div[role=dialog] button[type=submit]").click();
+      cy.wait("@StartTaskDialogProzesse");
+      visibleDialog().find("[data-test=Workflow-select-button]").click();
+      selectDialogOption("Erstbeurteilung");
+      visibleDialog().find("[data-test=Workflow-startProzess]").click();
       cy.wait(["@VflzWorkflow", "@startProzess", "@Task"]);
-      cy.get("button[data-test=Workflow-startProzess]").click({
+      cy.get("button[data-test=StartTaskDialog-toggle]").click({
         force: true,
       });
-      cy.get("div[role=dialog] button[name=optionId]").click();
-      cy.get("div[role=dialog] div[role=option]")
-        .contains("Erstbeurteilung")
+      visibleDialog().find("[data-test=Workflow-select-button]").click();
+      cy.get("div[role=listbox]:visible")
+        .last()
+        .contains("[role=option]", "Erstbeurteilung")
         .should("not.exist");
       cy.get("body").type("{Esc}"); // close listbox
       cy.get("body").type("{Esc}"); // close dialog
@@ -170,13 +191,8 @@ describe("Vflz Workflow Page", () => {
         cy.wait([`@create${type}`, "@VflzWorkflow"]);
         cy.get("div[data-test^=Workflow-item]").contains(type);
         cy.get("div[data-test=Workflow-taskTitle]").contains(type);
-        cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-          force: true,
-        });
-        cy.get("button[data-test=WorkflowActionMenu-deleteTask]").click();
-        cy.get("div[role=dialog] button").contains("Löschen").click();
-        cy.wait("@deleteTask");
-        cy.wait("@VflzWorkflow");
+        clickActionMenuItem("WorkflowActionMenu-deleteTask");
+        confirmDeleteTask();
         cy.get("div[data-test^=Workflow-item]")
           .contains(type)
           .should("not.exist");
@@ -186,12 +202,10 @@ describe("Vflz Workflow Page", () => {
       });
 
       // start next task in Prozess
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-startTask]").click();
-      cy.get("div[role=dialog] button[type=submit]").click();
-      cy.wait("@startFolgeschritt");
+      clickActionMenuItem("WorkflowActionMenu-startTask");
+      visibleDialog().find("[data-test=Workflow-startProzess]").click();
+      cy.wait("@startStandortFolgeschritt");
+      cy.wait(["@VflzWorkflow", "@Task"]);
       cy.get("div[data-test^=Workflow-item]").contains(
         "Erstbeurteilung Erhebungsdokumente",
       );
@@ -200,12 +214,10 @@ describe("Vflz Workflow Page", () => {
       );
 
       // start next task in Prozess
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-startTask]").click();
-      cy.get("div[role=dialog] button[type=submit]").click();
-      cy.wait("@startFolgeschritt");
+      clickActionMenuItem("WorkflowActionMenu-startTask");
+      visibleDialog().find("[data-test=Workflow-startProzess]").click();
+      cy.wait("@startStandortFolgeschritt");
+      cy.wait(["@VflzWorkflow", "@Task"]);
       cy.get("div[data-test^=Workflow-item]").contains("Erhebungsdokumente");
       cy.get("div[data-test=Workflow-taskTitle]").contains(
         "Erhebungsdokumente",
@@ -217,24 +229,14 @@ describe("Vflz Workflow Page", () => {
       });
       cy.get("[data-test=ActionMenu] button[type=submit]").click();
 
-      cy.wait(["@updateDokument", "@Task"]);
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(200); // wait for UI to update
+      cy.wait(["@updateDokument", "@Task", "@VflzWorkflow"]);
 
       // start next task in Prozess
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-startTask]").should("exist");
-      cy.get("button[data-test=WorkflowActionMenu-startTask]").click();
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(200); // wait for UI to update
-      cy.get("div[role=dialog] button[name=optionId]").click();
-      cy.get("div[role=dialog] div[role=option]")
-        .contains("Erhebungsdokumente vollständig erfasst?")
-        .click();
-      cy.get("div[role=dialog] button[type=submit]").click();
-      cy.wait("@startFolgeschritt");
+      clickActionMenuItem("WorkflowActionMenu-startTask");
+      visibleDialog().find("[data-test=Workflow-select-button]").click();
+      selectDialogOption("Erhebungsdokumente vollständig erfasst?");
+      visibleDialog().find("[data-test=Workflow-startProzess]").click();
+      cy.wait(["@startStandortFolgeschritt", "@VflzWorkflow", "@Task"]);
       cy.get("div[data-test^=Workflow-item]").contains(
         "Erhebungsdokumente vollständig erfasst?",
       );
@@ -246,26 +248,13 @@ describe("Vflz Workflow Page", () => {
       cy.get("form[data-test=Workflow-taskForm] span[role=checkbox]").click();
       cy.get("[data-test=ActionMenu] button[type=submit]").click();
       cy.wait(["@Task", "@VflzWorkflow"]);
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(500); // wait for UI to update
 
       // start next task in Prozess
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-startTask]").click();
-      cy.get("div[role=dialog] button[name=optionId]").click();
-      cy.get("div[role=dialog] div[role=option]").should(
-        "contain",
-        "Kontrolle Standortsdaten und Beurteilung",
-      );
-      cy.get("div[role=dialog] div[role=option]")
-        .contains("Kontrolle Standortsdaten und Beurteilung")
-        .click();
-      cy.get("div[role=dialog] button[type=submit]").click();
-      cy.wait(["@startFolgeschritt", "@VflzWorkflow", "@Task"]);
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(500); // wait for UI to update
+      clickActionMenuItem("WorkflowActionMenu-startTask");
+      visibleDialog().find("[data-test=Workflow-select-button]").click();
+      selectDialogOption("Kontrolle Standortsdaten und Beurteilung");
+      visibleDialog().find("[data-test=Workflow-startProzess]").click();
+      cy.wait(["@startStandortFolgeschritt", "@VflzWorkflow", "@Task"]);
       cy.get("div[data-test^=Workflow-item]").contains(
         "Kontrolle Standortsdaten und Beurteilung",
       );
@@ -274,13 +263,8 @@ describe("Vflz Workflow Page", () => {
       );
 
       // delete current task
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-deleteTask]").click();
-      cy.get("div[role=dialog] button").contains("Löschen").click();
-      cy.wait("@deleteTask");
-      cy.wait("@VflzWorkflow");
+      clickActionMenuItem("WorkflowActionMenu-deleteTask");
+      confirmDeleteTask();
       cy.get("div[data-test^=Workflow-item]")
         .contains("Kontrolle Standortsdaten und Beurteilung")
         .should("not.exist");
@@ -296,15 +280,8 @@ describe("Vflz Workflow Page", () => {
       cy.get("div[data-test=Workflow-taskTitle]").contains(
         "Erhebungsdokumente vollständig erfasst?",
       );
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-deleteTask]").click({
-        force: true,
-      });
-      cy.get("div[role=dialog] button").contains("Löschen").click();
-      cy.wait("@deleteTask");
-      cy.wait("@VflzWorkflow");
+      clickActionMenuItem("WorkflowActionMenu-deleteTask");
+      confirmDeleteTask();
 
       // delete current task
       cy.get("div[data-test=Workflow-item-DOKUMENT]")
@@ -312,15 +289,10 @@ describe("Vflz Workflow Page", () => {
         .click();
       cy.wait("@Task");
       cy.get("form[data-test=Workflow-taskForm]").contains("favicon-32x32.png");
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-deleteTask]").click();
-      cy.get("div[role=dialog] button").contains("Löschen").click();
-      cy.wait("@deleteTask");
-      cy.wait("@VflzWorkflow");
+      clickActionMenuItem("WorkflowActionMenu-deleteTask");
+      confirmDeleteTask();
 
-      cy.reload(); // this should not be necessary, but the headlessUI components @ test environment behave flaky here
+      revisitWorkflow();
 
       // delete current task
       cy.get("div[data-test=Workflow-item-AUFGABE]")
@@ -329,16 +301,9 @@ describe("Vflz Workflow Page", () => {
       cy.get("div[data-test=Workflow-taskTitle]").contains(
         "Erstbeurteilung Erhebungsdokumente",
       );
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-deleteTask]").click({
-        force: true,
-      });
-      cy.get("div[role=dialog]").should("exist");
-      cy.get("div[role=dialog] button").contains("Löschen").click();
-      cy.wait("@deleteTask");
-      cy.wait("@VflzWorkflow");
+      clickActionMenuItem("WorkflowActionMenu-deleteTask");
+      visibleDialog().should("exist");
+      confirmDeleteTask();
 
       // delete last task in Prozess, workflow list should be empty now
       cy.get("div[data-test=Workflow-item-PROZESS]")
@@ -347,20 +312,23 @@ describe("Vflz Workflow Page", () => {
       cy.get("div[data-test=Workflow-taskTitle]").contains(
         "Erstbeurteilung Inhaberorientierung",
       );
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-deleteTask]").click();
-      cy.get("div[role=dialog] button").contains("Löschen").click();
-      cy.wait("@deleteTask");
-      cy.wait("@VflzWorkflow");
-      cy.visit(`/vflz/${vflzId}/workflow`); // workaround for stale UI
+      clickActionMenuItem("WorkflowActionMenu-deleteTask");
+      confirmDeleteTask();
+      revisitWorkflow();
       cy.get("div[data-test^=Workflow-item]").should("not.exist");
       cy.get("div[data-test=Workflow-taskTitle]").should("not.exist");
     });
   });
 
   it("calls workflow trigger and creates events", () => {
+    const visibleDialog = () =>
+      cy.get('[data-dialog="dialog-body"]:visible').should("have.length", 1);
+    const selectWorkflowOption = (label: string) => {
+      visibleDialog().find("[data-test=Workflow-select-button]").click();
+      cy.get("[role=listbox]:visible").contains("[role=option]", label).click();
+      visibleDialog().find("[data-test=Workflow-startProzess]").click();
+    };
+
     cy.setUser("bearbeiten-geschaefte");
     cy.updateUserSetting("bearbeiten-geschaefte", "workflow.filter", "");
     cy.createVflz({ bezeichnung: "Workflow Test" }).then((vflzId) => {
@@ -368,33 +336,31 @@ describe("Vflz Workflow Page", () => {
       cy.wait("@VflzWorkflowLayout");
       cy.wait("@VflzWorkflow");
 
-      cy.get("button[data-test=Workflow-startProzess]").click({
+      cy.get("button[data-test=StartTaskDialog-toggle]").click({
         force: true,
       });
-      cy.get("div[role=dialog] button[name=optionId]").click();
-      cy.get("div[role=dialog] div[role=option]")
-        .contains("Test Events")
+      selectWorkflowOption("Test Events");
+      cy.wait(["@startProzess", "@Task"]);
+      cy.get('[data-dialog="dialog-body"]').should("not.exist");
+
+      cy.get(
+        "form[data-test=Workflow-taskForm] [data-test=ActionMenu] button[aria-haspopup=menu]",
+      ).click();
+      cy.get("[role=menu]:visible")
+        .find("button[data-test=WorkflowActionMenu-startTask]")
         .click();
-      cy.get("div[role=dialog] button[type=submit]").click();
+      selectWorkflowOption("Alle Events");
+      cy.wait(["@startStandortFolgeschritt", "@Task"]);
+      cy.get('[data-dialog="dialog-body"]').should("not.exist");
 
-      cy.get("[data-test=ActionMenu] button[aria-haspopup=menu]").click({
-        force: true,
-      });
-      cy.get("button[data-test=WorkflowActionMenu-startTask]").click();
-      cy.get("div[role=dialog] button[name=optionId]").click();
-      cy.get("div[role=dialog] div[role=option]")
-        .contains("Alle Events")
+      cy.get("form[data-test=Workflow-taskForm] button[name=status]").click();
+      cy.get("[role=listbox]:visible")
+        .contains("[role=option]", "geschlossen")
         .click();
-      cy.get("div[role=dialog] button[type=submit]").click();
-      cy.wait(["@startFolgeschritt", "@Task"]);
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(500); // wait for UI to update
 
-      cy.get("button[name=status]").click();
-      cy.get("div[role=option]").should("be.visible");
-      cy.get("div[role=option]").contains("geschlossen").click();
-
-      cy.get("[data-test=ActionMenu] button[type=submit]").click();
+      cy.get(
+        "form[data-test=Workflow-taskForm] [data-test=ActionMenu] button[type=submit]",
+      ).click();
 
       const date = new Date().toLocaleDateString("de", {
         day: "2-digit",

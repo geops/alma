@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from logging import getLogger
@@ -1574,6 +1575,28 @@ class Pool(Base, ErfassungMutationMixin):
         copy = cls(bezeichnung=bezeichnung)
         copy.vfl_pools = [VflPool(vfl_id=vp.vfl_id) for vp in self.vfl_pools]
         return copy
+
+    def get_current_vflzs(self, session: Session) -> Sequence[Vflz]:
+        # we avoid using relationships on VflPool for Vflz here.
+        # Reason is that Pools can be composed of plenty of vflzs.
+        # To avoid N+1 problems or unnecessary eager loading, we stick to
+        # a plain query.
+        return session.scalars(
+            select(Vflz)
+            .join(
+                VflPool,
+                VflPool.vfl_id == Vflz.vfl_id,
+            )
+            .where(
+                VflPool.pool_id == self.pool_id,
+                Vflz.is_current,
+            )
+            .order_by(
+                Vflz.combined_id,
+                Vflz.bezeichnung,
+                Vflz.vflz_id,
+            )
+        ).all()
 
 
 def is_read_only(session: Session, vflz: Vflz) -> bool:

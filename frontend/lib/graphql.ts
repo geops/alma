@@ -107,7 +107,7 @@ export type Aufgabe = Task & {
   events: Array<Event>;
   faelligkeitsDatum?: Maybe<Scalars["Date"]["output"]>;
   faelligkeitsStatus: FaelligkeitStatus;
-  folgeschritte: Array<TaskOption>;
+  folgeschritte: StepInfo;
   kategorie?: Maybe<Scalars["Code"]["output"]>;
   notiz?: Maybe<Scalars["String"]["output"]>;
   oeffentlich: Scalars["Boolean"]["output"];
@@ -308,15 +308,6 @@ export type CodeListEntry = {
 
 export type CodeListEntryProblemGroup = CodeListEntry | ProblemGroup;
 
-export type CreateAufgabeInput = {
-  faelligkeitsDatum: Scalars["Date"]["input"];
-  notiz?: InputMaybe<Scalars["String"]["input"]>;
-  startDatum: Scalars["Date"]["input"];
-  taskId?: InputMaybe<Scalars["ID"]["input"]>;
-  title: Scalars["String"]["input"];
-  vflzId: Scalars["ID"]["input"];
-};
-
 export type CreateCodeListEntryInput = {
   bezeichnung: TranslationInput;
   cliId: Scalars["ID"]["input"];
@@ -325,7 +316,60 @@ export type CreateCodeListEntryInput = {
   sortKey?: InputMaybe<Scalars["Int"]["input"]>;
 };
 
-export type CreateDokumentInput = {
+export type CreatePoolAufgabeInput = {
+  faelligkeitsDatum: Scalars["Date"]["input"];
+  notiz?: InputMaybe<Scalars["String"]["input"]>;
+  poolId: Scalars["ID"]["input"];
+  startDatum: Scalars["Date"]["input"];
+  title: Scalars["String"]["input"];
+};
+
+export type CreatePoolDokumentInput = {
+  dokument: Scalars["String"]["input"];
+  kategorie?: InputMaybe<Scalars["CodeInputType"]["input"]>;
+  notiz: Scalars["String"]["input"];
+  oeffentlich: Scalars["Boolean"]["input"];
+  poolId: Scalars["ID"]["input"];
+  startDatum: Scalars["Date"]["input"];
+  title: Scalars["String"]["input"];
+  url?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type CreatePoolInput = {
+  bemerkungen?: InputMaybe<Scalars["String"]["input"]>;
+  bezeichnung: Scalars["String"]["input"];
+};
+
+export type CreatePoolNotizInput = {
+  kategorie?: InputMaybe<Scalars["CodeInputType"]["input"]>;
+  notiz: Scalars["String"]["input"];
+  oeffentlich: Scalars["Boolean"]["input"];
+  poolId: Scalars["ID"]["input"];
+  startDatum: Scalars["Date"]["input"];
+  title: Scalars["String"]["input"];
+  url?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type CreateSavedSearchInput = {
+  fields: Array<SearchField>;
+  isGrouped: Scalars["Boolean"]["input"];
+  isShared: Scalars["Boolean"]["input"];
+  name: Scalars["String"]["input"];
+  query: Scalars["String"]["input"];
+  showOnDashboard: Scalars["Boolean"]["input"];
+  sortBy: Array<SortItemInput>;
+};
+
+export type CreateStandortAufgabeInput = {
+  faelligkeitsDatum: Scalars["Date"]["input"];
+  notiz?: InputMaybe<Scalars["String"]["input"]>;
+  startDatum: Scalars["Date"]["input"];
+  taskId?: InputMaybe<Scalars["ID"]["input"]>;
+  title: Scalars["String"]["input"];
+  vflzId: Scalars["ID"]["input"];
+};
+
+export type CreateStandortDokumentInput = {
   dokument: Scalars["String"]["input"];
   kategorie?: InputMaybe<Scalars["CodeInputType"]["input"]>;
   notiz: Scalars["String"]["input"];
@@ -337,7 +381,7 @@ export type CreateDokumentInput = {
   vflzId: Scalars["ID"]["input"];
 };
 
-export type CreateNotizInput = {
+export type CreateStandortNotizInput = {
   kategorie?: InputMaybe<Scalars["CodeInputType"]["input"]>;
   notiz: Scalars["String"]["input"];
   oeffentlich: Scalars["Boolean"]["input"];
@@ -346,21 +390,6 @@ export type CreateNotizInput = {
   title: Scalars["String"]["input"];
   url?: InputMaybe<Scalars["String"]["input"]>;
   vflzId: Scalars["ID"]["input"];
-};
-
-export type CreatePoolInput = {
-  bemerkungen?: InputMaybe<Scalars["String"]["input"]>;
-  bezeichnung: Scalars["String"]["input"];
-};
-
-export type CreateSavedSearchInput = {
-  fields: Array<SearchField>;
-  isGrouped: Scalars["Boolean"]["input"];
-  isShared: Scalars["Boolean"]["input"];
-  name: Scalars["String"]["input"];
-  query: Scalars["String"]["input"];
-  showOnDashboard: Scalars["Boolean"]["input"];
-  sortBy: Array<SortItemInput>;
 };
 
 export type CreateSubjektInput = {
@@ -424,7 +453,7 @@ export type Dokument = Task & {
   events: Array<Event>;
   faelligkeitsDatum?: Maybe<Scalars["Date"]["output"]>;
   faelligkeitsStatus: FaelligkeitStatus;
-  folgeschritte: Array<TaskOption>;
+  folgeschritte: StepInfo;
   kategorie?: Maybe<Scalars["Code"]["output"]>;
   notiz?: Maybe<Scalars["String"]["output"]>;
   oeffentlich: Scalars["Boolean"]["output"];
@@ -576,7 +605,7 @@ export type Formular = Task & {
   faelligkeitsDatum?: Maybe<Scalars["Date"]["output"]>;
   faelligkeitsStatus: FaelligkeitStatus;
   felder: Scalars["FormularFelder"]["output"];
-  folgeschritte: Array<TaskOption>;
+  folgeschritte: StepInfo;
   kategorie?: Maybe<Scalars["Code"]["output"]>;
   notiz?: Maybe<Scalars["String"]["output"]>;
   oeffentlich: Scalars["Boolean"]["output"];
@@ -809,12 +838,15 @@ export type Mutation = {
   addSearchResultsToPool: Pool;
   addToPool: Pool;
   copyPool: Pool;
-  createAufgabe: Aufgabe;
   createCodeListEntry: CodeListEntryProblemGroup;
-  createDokument: Dokument;
-  createNotiz: Notiz;
   createPool: PoolProblemGroup;
+  createPoolAufgabe: Array<Aufgabe>;
+  createPoolDokument: Array<Dokument>;
+  createPoolNotiz: Array<Notiz>;
   createSavedSearch: SavedSearchProblemGroup;
+  createStandortAufgabe: Aufgabe;
+  createStandortDokument: Dokument;
+  createStandortNotiz: Notiz;
   createSubjekt: UpdateSubjektResult;
   createTeilstandort: VflzProblemGroup;
   createUser: UserProblemGroup;
@@ -827,8 +859,10 @@ export type Mutation = {
   historizeVflz: VflzProblemGroup;
   removeFromPool: Pool;
   sendPasswordResetEmail: User;
-  startFolgeschritt: StartTaskResult;
-  startProzess: StartProzessResult;
+  startPoolFolgeschritt: StartPoolFolgeschrittResult;
+  startPoolProzess: StartPoolProzessResult;
+  startStandortFolgeschritt: StartStandortFolgeschrittResult;
+  startStandortProzess: StartStandortProzessResult;
   updateAufgabe: AufgabeWorkflowProblemGroup;
   updateCodeList: CodeList;
   updateCodeListEntry: CodeListEntryProblemGroup;
@@ -866,28 +900,40 @@ export type MutationCopyPoolArgs = {
   poolId: Scalars["ID"]["input"];
 };
 
-export type MutationCreateAufgabeArgs = {
-  data: CreateAufgabeInput;
-};
-
 export type MutationCreateCodeListEntryArgs = {
   data: CreateCodeListEntryInput;
-};
-
-export type MutationCreateDokumentArgs = {
-  data: CreateDokumentInput;
-};
-
-export type MutationCreateNotizArgs = {
-  data: CreateNotizInput;
 };
 
 export type MutationCreatePoolArgs = {
   data: CreatePoolInput;
 };
 
+export type MutationCreatePoolAufgabeArgs = {
+  data: CreatePoolAufgabeInput;
+};
+
+export type MutationCreatePoolDokumentArgs = {
+  data: CreatePoolDokumentInput;
+};
+
+export type MutationCreatePoolNotizArgs = {
+  data: CreatePoolNotizInput;
+};
+
 export type MutationCreateSavedSearchArgs = {
   data: CreateSavedSearchInput;
+};
+
+export type MutationCreateStandortAufgabeArgs = {
+  data: CreateStandortAufgabeInput;
+};
+
+export type MutationCreateStandortDokumentArgs = {
+  data: CreateStandortDokumentInput;
+};
+
+export type MutationCreateStandortNotizArgs = {
+  data: CreateStandortNotizInput;
 };
 
 export type MutationCreateSubjektArgs = {
@@ -939,12 +985,20 @@ export type MutationSendPasswordResetEmailArgs = {
   userId: Scalars["Int"]["input"];
 };
 
-export type MutationStartFolgeschrittArgs = {
-  data: StartTaskInput;
+export type MutationStartPoolFolgeschrittArgs = {
+  data: StartPoolFolgeschrittInput;
 };
 
-export type MutationStartProzessArgs = {
-  data: StartProzessInput;
+export type MutationStartPoolProzessArgs = {
+  data: StartPoolProzessInput;
+};
+
+export type MutationStartStandortFolgeschrittArgs = {
+  data: StartStandortFolgeschrittInput;
+};
+
+export type MutationStartStandortProzessArgs = {
+  data: StartStandortProzessInput;
 };
 
 export type MutationUpdateAufgabeArgs = {
@@ -1039,7 +1093,7 @@ export type Notiz = Task & {
   events: Array<Event>;
   faelligkeitsDatum?: Maybe<Scalars["Date"]["output"]>;
   faelligkeitsStatus: FaelligkeitStatus;
-  folgeschritte: Array<TaskOption>;
+  folgeschritte: StepInfo;
   kategorie?: Maybe<Scalars["Code"]["output"]>;
   notiz?: Maybe<Scalars["String"]["output"]>;
   oeffentlich: Scalars["Boolean"]["output"];
@@ -1250,6 +1304,7 @@ export const ProblemCodeEnum = {
   Busy: "BUSY",
   Exists: "EXISTS",
   TaskDelete: "TASK_DELETE",
+  UnavailableFolgeschritt: "UNAVAILABLE_FOLGESCHRITT",
   Validation: "VALIDATION",
   ValidationEmail: "VALIDATION_EMAIL",
   ValidationGeom: "VALIDATION_GEOM",
@@ -1269,7 +1324,7 @@ export type Prozess = Task & {
   events: Array<Event>;
   faelligkeitsDatum?: Maybe<Scalars["Date"]["output"]>;
   faelligkeitsStatus: FaelligkeitStatus;
-  folgeschritte: Array<TaskOption>;
+  folgeschritte: StepInfo;
   kategorie?: Maybe<Scalars["Code"]["output"]>;
   notiz?: Maybe<Scalars["String"]["output"]>;
   oeffentlich: Scalars["Boolean"]["output"];
@@ -1322,6 +1377,7 @@ export type Query = {
   mutationPermissions: Array<RequiredPermissions>;
   pool: Pool;
   pools: PaginatedPoolResult;
+  prozesse: Array<TaskOption>;
   queryPermissions: Array<RequiredPermissions>;
   reportConfigurations: Array<ReportConfigurationType>;
   savedSearches: Array<SavedSearch>;
@@ -1336,6 +1392,7 @@ export type Query = {
   users: Array<User>;
   validateCreateTeilstandort: ValidatedCreateVflzDataProblemGroup;
   validateCreateVflz: ValidatedCreateVflzDataProblemGroup;
+  validatePoolFolgeschritt: ValidatedPoolFolgeschrittData;
   validateSearchQuery?: Maybe<Problem>;
   validateVflzData: ValidatedVflzDataProblemGroup;
   vflz: Vflz;
@@ -1402,6 +1459,7 @@ export type QueryPoolsArgs = {
   filterBezeichnung?: InputMaybe<Scalars["String"]["input"]>;
   page?: Scalars["Int"]["input"];
   perPage?: Scalars["Int"]["input"];
+  vflzId?: InputMaybe<Scalars["ID"]["input"]>;
 };
 
 export type QueryReportConfigurationsArgs = {
@@ -1448,6 +1506,14 @@ export type QueryValidateCreateTeilstandortArgs = {
 
 export type QueryValidateCreateVflzArgs = {
   data: ValidateCreateVflzInput;
+};
+
+export type QueryValidatePoolFolgeschrittArgs = {
+  data: ValidatePoolFolgeschrittInput;
+  invalidPage?: Scalars["Int"]["input"];
+  invalidPerPage?: Scalars["Int"]["input"];
+  validPage?: Scalars["Int"]["input"];
+  validPerPage?: Scalars["Int"]["input"];
 };
 
 export type QueryValidateSearchQueryArgs = {
@@ -1905,27 +1971,51 @@ export type StandortTypenStatistic = {
   typ: StandortTyp;
 };
 
-export type StartProzessInput = {
+export type StartPoolFolgeschrittInput = {
   optionId: Scalars["ID"]["input"];
-  vflzId: Scalars["ID"]["input"];
+  poolId: Scalars["ID"]["input"];
+  taskId: Scalars["ID"]["input"];
 };
 
-export type StartProzessResult = {
-  prozess: Prozess;
+export type StartPoolFolgeschrittResult = {
+  tasks: Array<Task>;
 };
 
-export type StartTaskInput = {
+export type StartPoolProzessInput = {
+  optionId: Scalars["ID"]["input"];
+  poolId: Scalars["ID"]["input"];
+};
+
+export type StartPoolProzessResult = {
+  prozesse: Array<Prozess>;
+};
+
+export type StartStandortFolgeschrittInput = {
   optionId: Scalars["ID"]["input"];
   taskId: Scalars["ID"]["input"];
 };
 
-export type StartTaskResult = {
+export type StartStandortFolgeschrittResult = {
   task: Task;
+};
+
+export type StartStandortProzessInput = {
+  optionId: Scalars["ID"]["input"];
+  vflzId: Scalars["ID"]["input"];
+};
+
+export type StartStandortProzessResult = {
+  prozess: Prozess;
 };
 
 export type StatusPublikation = {
   belastet?: Maybe<Scalars["Boolean"]["output"]>;
   datPublizieren?: Maybe<Scalars["Date"]["output"]>;
+};
+
+export type StepInfo = {
+  availableOptions: Array<TaskOption>;
+  problems: Array<Problem>;
 };
 
 export type Subjekt = {
@@ -1960,7 +2050,7 @@ export type Task = {
   events: Array<Event>;
   faelligkeitsDatum?: Maybe<Scalars["Date"]["output"]>;
   faelligkeitsStatus: FaelligkeitStatus;
-  folgeschritte: Array<TaskOption>;
+  folgeschritte: StepInfo;
   kategorie?: Maybe<Scalars["Code"]["output"]>;
   notiz?: Maybe<Scalars["String"]["output"]>;
   oeffentlich: Scalars["Boolean"]["output"];
@@ -2344,6 +2434,11 @@ export type ValidateCreateVflzInput = {
   vftyp?: InputMaybe<Scalars["CodeInputType"]["input"]>;
 };
 
+export type ValidatePoolFolgeschrittInput = {
+  optionId?: InputMaybe<Scalars["ID"]["input"]>;
+  poolId: Scalars["ID"]["input"];
+};
+
 export type ValidatedCreateVflzData = {
   combinedId: Array<Scalars["String"]["output"]>;
   flugplatz: Array<Scalars["Code"]["output"]>;
@@ -2358,6 +2453,11 @@ export type ValidatedParzelle = {
   gbNummer: Scalars["String"]["output"];
   gemeinde?: Maybe<Gemeinde>;
   nummerierungsbereich?: Maybe<Scalars["String"]["output"]>;
+};
+
+export type ValidatedPoolFolgeschrittData = {
+  invalidStandorte: PaginatedVflzResult;
+  validStandorte: PaginatedVflzResult;
 };
 
 export type ValidatedVflzData = {
@@ -3480,44 +3580,226 @@ export type SearchVflzSubjekteQuery = {
   };
 };
 
-export type CreateNotizMutationVariables = Exact<{
-  data: CreateNotizInput;
+export type TaskTargetPoolSearchQueryVariables = Exact<{
+  filterBezeichnung: Scalars["String"]["input"];
+  vflzId?: InputMaybe<Scalars["ID"]["input"]>;
 }>;
 
-export type CreateNotizMutation = { createTask: { taskId: string } };
-
-export type CreateDokumentMutationVariables = Exact<{
-  data: CreateDokumentInput;
-}>;
-
-export type CreateDokumentMutation = { createTask: { taskId: string } };
-
-export type CreateAufgabeMutationVariables = Exact<{
-  data: CreateAufgabeInput;
-}>;
-
-export type CreateAufgabeMutation = { createTask: { taskId: string } };
-
-export type StartProzessMutationVariables = Exact<{
-  data: StartProzessInput;
-}>;
-
-export type StartProzessMutation = {
-  startProzess: { prozess: { taskId: string } };
+export type TaskTargetPoolSearchQuery = {
+  pools: {
+    results: Array<{
+      poolId: string;
+      bezeichnung?: string | null;
+      standorte: { numResultsTotal: number };
+    }>;
+  };
 };
 
-export type StartFolgeschrittMutationVariables = Exact<{
-  data: StartTaskInput;
+export type TaskTargetPoolFolgeschrittValidQueryVariables = Exact<{
+  poolId: Scalars["ID"]["input"];
+  optionId?: InputMaybe<Scalars["ID"]["input"]>;
+  validPage: Scalars["Int"]["input"];
+  validPerPage: Scalars["Int"]["input"];
 }>;
 
-export type StartFolgeschrittMutation = {
-  startFolgeschritt: {
+export type TaskTargetPoolFolgeschrittValidQuery = {
+  validatePoolFolgeschritt: {
+    validStandorte: {
+      numResultsTotal: number;
+      results: Array<{
+        combinedId: string;
+        vflzId: string;
+        bezeichnung?: string | null;
+        beurteilung?: { kbsInfo?: { color: string } | null } | null;
+        gemeinde?: { gemeinde: string } | null;
+        evaluationStatus: {
+          deletedPreviously: boolean;
+          deleteNow: boolean;
+          publishedPreviously: boolean;
+          publishNow: boolean;
+        };
+      }>;
+    };
+    invalidStandorte: { numResultsTotal: number };
+  };
+};
+
+export type TaskTargetPoolFolgeschrittInvalidQueryVariables = Exact<{
+  poolId: Scalars["ID"]["input"];
+  optionId?: InputMaybe<Scalars["ID"]["input"]>;
+  invalidPage: Scalars["Int"]["input"];
+  invalidPerPage: Scalars["Int"]["input"];
+}>;
+
+export type TaskTargetPoolFolgeschrittInvalidQuery = {
+  validatePoolFolgeschritt: {
+    validStandorte: { numResultsTotal: number };
+    invalidStandorte: {
+      numResultsTotal: number;
+      results: Array<{
+        combinedId: string;
+        vflzId: string;
+        bezeichnung?: string | null;
+        beurteilung?: { kbsInfo?: { color: string } | null } | null;
+        gemeinde?: { gemeinde: string } | null;
+        evaluationStatus: {
+          deletedPreviously: boolean;
+          deleteNow: boolean;
+          publishedPreviously: boolean;
+          publishNow: boolean;
+        };
+      }>;
+    };
+  };
+};
+
+export type PoolOptionFragment = {
+  poolId: string;
+  bezeichnung?: string | null;
+  standorte: { numResultsTotal: number };
+};
+
+export type StartTaskDialogProzesseQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type StartTaskDialogProzesseQuery = {
+  prozesse: Array<{ optionId: string; title: string; type: TaskType }>;
+};
+
+export type TaskTargetVflzItemQueryVariables = Exact<{
+  vflzId: Scalars["ID"]["input"];
+}>;
+
+export type TaskTargetVflzItemQuery = {
+  vflz: {
+    combinedId: string;
+    vflzId: string;
+    bezeichnung?: string | null;
+    prozesse: Array<{ optionId: string; title: string; type: TaskType }>;
+    beurteilung?: { kbsInfo?: { color: string } | null } | null;
+    gemeinde?: { gemeinde: string } | null;
+    evaluationStatus: {
+      deletedPreviously: boolean;
+      deleteNow: boolean;
+      publishedPreviously: boolean;
+      publishNow: boolean;
+    };
+  };
+};
+
+export type TaskTargetStandortSearchQueryVariables = Exact<{
+  query: Scalars["String"]["input"];
+  lang: Language;
+}>;
+
+export type TaskTargetStandortSearchQuery = {
+  search: {
+    graph: {
+      results: Array<{
+        combinedId: string;
+        vflzId: string;
+        bezeichnung?: string | null;
+        prozesse: Array<{ optionId: string; title: string; type: TaskType }>;
+        beurteilung?: { kbsInfo?: { color: string } | null } | null;
+        gemeinde?: { gemeinde: string } | null;
+        evaluationStatus: {
+          deletedPreviously: boolean;
+          deleteNow: boolean;
+          publishedPreviously: boolean;
+          publishNow: boolean;
+        };
+      }>;
+    };
+  };
+};
+
+export type CreateStandortNotizMutationVariables = Exact<{
+  data: CreateStandortNotizInput;
+}>;
+
+export type CreateStandortNotizMutation = { createTask: { taskId: string } };
+
+export type CreatePoolNotizMutationVariables = Exact<{
+  data: CreatePoolNotizInput;
+}>;
+
+export type CreatePoolNotizMutation = {
+  createTasks: Array<{ taskId: string }>;
+};
+
+export type CreateStandortDokumentMutationVariables = Exact<{
+  data: CreateStandortDokumentInput;
+}>;
+
+export type CreateStandortDokumentMutation = { createTask: { taskId: string } };
+
+export type CreatePoolDokumentMutationVariables = Exact<{
+  data: CreatePoolDokumentInput;
+}>;
+
+export type CreatePoolDokumentMutation = {
+  createTasks: Array<{ taskId: string }>;
+};
+
+export type CreateStandortAufgabeMutationVariables = Exact<{
+  data: CreateStandortAufgabeInput;
+}>;
+
+export type CreateStandortAufgabeMutation = { createTask: { taskId: string } };
+
+export type CreatePoolAufgabeMutationVariables = Exact<{
+  data: CreatePoolAufgabeInput;
+}>;
+
+export type CreatePoolAufgabeMutation = {
+  createTasks: Array<{ taskId: string }>;
+};
+
+export type StartStandortProzessMutationVariables = Exact<{
+  data: StartStandortProzessInput;
+}>;
+
+export type StartStandortProzessMutation = {
+  startStandortProzess: { prozess: { taskId: string } };
+};
+
+export type StartPoolProzessMutationVariables = Exact<{
+  data: StartPoolProzessInput;
+}>;
+
+export type StartPoolProzessMutation = {
+  startPoolProzess: { prozesse: Array<{ taskId: string }> };
+};
+
+export type StartStandortFolgeschrittMutationVariables = Exact<{
+  data: StartStandortFolgeschrittInput;
+}>;
+
+export type StartStandortFolgeschrittMutation = {
+  startStandortFolgeschritt: {
     task:
       | { taskId: string }
       | { taskId: string }
       | { taskId: string }
       | { taskId: string }
       | { taskId: string };
+  };
+};
+
+export type StartPoolFolgeschrittMutationVariables = Exact<{
+  data: StartPoolFolgeschrittInput;
+}>;
+
+export type StartPoolFolgeschrittMutation = {
+  startPoolFolgeschritt: {
+    tasks: Array<
+      | { taskId: string }
+      | { taskId: string }
+      | { taskId: string }
+      | { taskId: string }
+      | { taskId: string }
+    >;
   };
 };
 
@@ -3573,11 +3855,14 @@ export type TaskQuery = {
               vflzId: string;
             }
         >;
-        folgeschritte: Array<{
-          optionId: string;
-          title: string;
-          type: TaskType;
-        }>;
+        folgeschritte: {
+          availableOptions: Array<{
+            optionId: string;
+            title: string;
+            type: TaskType;
+          }>;
+          problems: Array<{ message: string; messageCode?: string | null }>;
+        };
         sachbearbeitung: Array<{
           betTaskId: string;
           subjekt: {
@@ -3664,11 +3949,14 @@ export type TaskQuery = {
               vflzId: string;
             }
         >;
-        folgeschritte: Array<{
-          optionId: string;
-          title: string;
-          type: TaskType;
-        }>;
+        folgeschritte: {
+          availableOptions: Array<{
+            optionId: string;
+            title: string;
+            type: TaskType;
+          }>;
+          problems: Array<{ message: string; messageCode?: string | null }>;
+        };
         sachbearbeitung: Array<{
           betTaskId: string;
           subjekt: {
@@ -3755,11 +4043,14 @@ export type TaskQuery = {
               vflzId: string;
             }
         >;
-        folgeschritte: Array<{
-          optionId: string;
-          title: string;
-          type: TaskType;
-        }>;
+        folgeschritte: {
+          availableOptions: Array<{
+            optionId: string;
+            title: string;
+            type: TaskType;
+          }>;
+          problems: Array<{ message: string; messageCode?: string | null }>;
+        };
         sachbearbeitung: Array<{
           betTaskId: string;
           subjekt: {
@@ -3845,11 +4136,14 @@ export type TaskQuery = {
               vflzId: string;
             }
         >;
-        folgeschritte: Array<{
-          optionId: string;
-          title: string;
-          type: TaskType;
-        }>;
+        folgeschritte: {
+          availableOptions: Array<{
+            optionId: string;
+            title: string;
+            type: TaskType;
+          }>;
+          problems: Array<{ message: string; messageCode?: string | null }>;
+        };
         sachbearbeitung: Array<{
           betTaskId: string;
           subjekt: {
@@ -3934,11 +4228,14 @@ export type TaskQuery = {
               vflzId: string;
             }
         >;
-        folgeschritte: Array<{
-          optionId: string;
-          title: string;
-          type: TaskType;
-        }>;
+        folgeschritte: {
+          availableOptions: Array<{
+            optionId: string;
+            title: string;
+            type: TaskType;
+          }>;
+          problems: Array<{ message: string; messageCode?: string | null }>;
+        };
         sachbearbeitung: Array<{
           betTaskId: string;
           subjekt: {
@@ -4089,7 +4386,14 @@ type TaskForm_Aufgabe_Fragment = {
         vflzId: string;
       }
   >;
-  folgeschritte: Array<{ optionId: string; title: string; type: TaskType }>;
+  folgeschritte: {
+    availableOptions: Array<{
+      optionId: string;
+      title: string;
+      type: TaskType;
+    }>;
+    problems: Array<{ message: string; messageCode?: string | null }>;
+  };
   sachbearbeitung: Array<{
     betTaskId: string;
     subjekt: {
@@ -4173,7 +4477,14 @@ type TaskForm_Dokument_Fragment = {
         vflzId: string;
       }
   >;
-  folgeschritte: Array<{ optionId: string; title: string; type: TaskType }>;
+  folgeschritte: {
+    availableOptions: Array<{
+      optionId: string;
+      title: string;
+      type: TaskType;
+    }>;
+    problems: Array<{ message: string; messageCode?: string | null }>;
+  };
   sachbearbeitung: Array<{
     betTaskId: string;
     subjekt: {
@@ -4257,7 +4568,14 @@ type TaskForm_Formular_Fragment = {
         vflzId: string;
       }
   >;
-  folgeschritte: Array<{ optionId: string; title: string; type: TaskType }>;
+  folgeschritte: {
+    availableOptions: Array<{
+      optionId: string;
+      title: string;
+      type: TaskType;
+    }>;
+    problems: Array<{ message: string; messageCode?: string | null }>;
+  };
   sachbearbeitung: Array<{
     betTaskId: string;
     subjekt: {
@@ -4340,7 +4658,14 @@ type TaskForm_Notiz_Fragment = {
         vflzId: string;
       }
   >;
-  folgeschritte: Array<{ optionId: string; title: string; type: TaskType }>;
+  folgeschritte: {
+    availableOptions: Array<{
+      optionId: string;
+      title: string;
+      type: TaskType;
+    }>;
+    problems: Array<{ message: string; messageCode?: string | null }>;
+  };
   sachbearbeitung: Array<{
     betTaskId: string;
     subjekt: {
@@ -4422,7 +4747,14 @@ type TaskForm_Prozess_Fragment = {
         vflzId: string;
       }
   >;
-  folgeschritte: Array<{ optionId: string; title: string; type: TaskType }>;
+  folgeschritte: {
+    availableOptions: Array<{
+      optionId: string;
+      title: string;
+      type: TaskType;
+    }>;
+    problems: Array<{ message: string; messageCode?: string | null }>;
+  };
   sachbearbeitung: Array<{
     betTaskId: string;
     subjekt: {
@@ -5014,6 +5346,28 @@ export type PublicationIconFragment = {
     publishNow: boolean;
   };
 };
+
+export type E2eCreatePoolMutationVariables = Exact<{
+  data: CreatePoolInput;
+}>;
+
+export type E2eCreatePoolMutation = {
+  createPool:
+    { __typename: "Pool"; poolId: string } | { __typename: "ProblemGroup" };
+};
+
+export type E2eVflzForPoolQueryVariables = Exact<{
+  vflzId: Scalars["ID"]["input"];
+}>;
+
+export type E2eVflzForPoolQuery = { vflz: { vflId: string } };
+
+export type E2eAddToPoolMutationVariables = Exact<{
+  poolId: Scalars["ID"]["input"];
+  vflId: Scalars["ID"]["input"];
+}>;
+
+export type E2eAddToPoolMutation = { addToPool: { poolId: string } };
 
 export type CypressCreateVflzMutationVariables = Exact<{
   data: CreateVflzInput;
@@ -8987,7 +9341,9 @@ export type SearchSubjekteQuery = {
   };
 };
 
-export type SachbearbeitungQueryVariables = Exact<{ [key: string]: never }>;
+export type SachbearbeitungQueryVariables = Exact<{
+  page: Scalars["Int"]["input"];
+}>;
 
 export type SachbearbeitungQuery = {
   subjekte: {

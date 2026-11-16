@@ -25,6 +25,10 @@ declare global {
           form?: { model?: string };
           router?: Partial<NextRouter>;
           translations?: Record<string, unknown>;
+          /** Translations per locale; overrides `translations` for "de". */
+          translationsByLocale?: Partial<
+            Record<"de" | "fr" | "it", Record<string, unknown>>
+          >;
         } & MountOptions,
       ) => Cypress.Chainable<MountReturn>;
       stubCurrentUser: (
@@ -81,7 +85,12 @@ function CypressNextRouter({
 }
 
 Cypress.Commands.add("mount", (component, options) => {
-  const translations = { de: options?.translations ?? {}, fr: {}, it: {} };
+  const translations = {
+    de: options?.translations ?? {},
+    fr: {},
+    it: {},
+    ...options?.translationsByLocale,
+  };
   return mount(
     <AppSWRConfig
       provider={() => {
@@ -107,7 +116,7 @@ Cypress.Commands.add("mount", (component, options) => {
 });
 
 Cypress.Commands.add("stubCurrentUser", (currentUser) => {
-  cy.intercept("POST", "/graphql", (req) => {
+  cy.intercept<{ query?: string }>("POST", "/graphql", (req) => {
     if (req.body.query?.includes("query useCurrentUser")) {
       req.reply({
         data: {

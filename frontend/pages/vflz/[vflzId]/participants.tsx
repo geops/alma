@@ -616,8 +616,8 @@ function SubjektField<T extends FieldValues>({
 }
 
 const querySachbearbeitung = gql`
-  query Sachbearbeitung {
-    subjekte(perPage: 1000, isSachbearbeiter: true) {
+  query Sachbearbeitung($page: Int!) {
+    subjekte(page: $page, perPage: 20, isSachbearbeiter: true) {
       results {
         subjId
         vorname
@@ -639,7 +639,23 @@ function Sachbearbeitung() {
   const currentUser = useCurrentUser();
   const { setValue } = useFormContext<SachbearbeitungFragment>();
   const { t } = useI18n();
-  const { data } = useSWRImmutable<SachbearbeitungQuery>(querySachbearbeitung);
+  const { data } = useSWRImmutable<SachbearbeitungQuery>(
+    querySachbearbeitung,
+    async (query: string) => {
+      const results: SachbearbeitungQuery["subjekte"]["results"] = [];
+      let page = 1;
+      let pageResults;
+      do {
+        const response = await client.request<SachbearbeitungQuery>(query, {
+          page,
+        });
+        pageResults = response.subjekte.results;
+        results.push(...pageResults);
+        page += 1;
+      } while (pageResults.length === 20);
+      return { subjekte: { results } };
+    },
+  );
   const sachbearbeitung = useWatch<SachbearbeitungFragment>({
     name: "sachbearbeitung",
   });

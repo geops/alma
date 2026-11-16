@@ -14,6 +14,32 @@ Mit dem `alma workflow import` Befehl direkt im backend Container können die Pr
 
 importiert den Workflow in die lokale DB. Dabei werden ggf. fehlende IDs generiert und die Datei neu geschrieben (Ausgabe des Befehls beachten).
 
+### Import über eine Konfigurationsdatei (pro Kunde)
+
+Welche Prozesse bei einem Kunden aktiv sind, wird in einer Textdatei festgelegt (eine Prozessdatei pro Zeile):
+
+    # Kommentar
+    auskunft.yml
+    001001/baugesuch.yml
+
+- Jede Zeile ist ein Pfad relativ zum Workflows-Ordner. Leere Zeilen und Zeilen, die mit `#` beginnen, werden ignoriert.
+- Globs (`*`) werden nicht unterstützt, absolute Pfade sind nicht erlaubt. Die Dateien werden in der angegebenen Reihenfolge importiert.
+- Basisordner ist standardmässig `/app/src/workflows` (im Container). Mit `--workflows-dir` kann ein anderer Ordner angegeben werden.
+
+Aufruf:
+
+    $ docker compose run --rm --no-deps --entrypoint=/app/venv/bin/alma backend workflow import --config=/app/src/workflows/demo_config.txt --workflows-dir=/app/src/workflows
+
+bzw. lokal `make import-workflows`. Die Standard-Konfiguration `backend/workflows/demo_config.txt` listet alle Prozesse von demo.
+
+Übersetzungen im Konfigurations-Modus:
+
+- Übersetzungen, die im UI bearbeitet wurden (`mutations_datum` gesetzt), bleiben erhalten.
+- Nicht bearbeitete Übersetzungen werden aktualisiert, neue Schlüssel eingefügt.
+- Übersetzungen werden nie gelöscht.
+
+Unterschied `--file` / `--config`: `--file` importiert genau eine Datei, überschreibt alle Übersetzungen des Prozesses und schreibt generierte IDs zurück in die Datei (für die Entwicklung von Prozessen). `--config` schreibt nie in die Prozessdateien und ist für Deployments gedacht. Genau eine der beiden Optionen muss angegeben werden.
+
 Mit dem Befehl `alma workflow export` kann einen Workflow aus der DB exportiert werden. `UUID` mit der UUID des Prozesses ersetzen (Spalte `key` in der Tabelle `alma.wf_config` vom Eintrag mit `type=workflow`):
 
     $ docker compose run backend /app/venv/bin/alma workflow export --key=UUID --file src/workflows/neue_datei.yml

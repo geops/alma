@@ -234,10 +234,10 @@ class IcingaSettings(BaseSettings):
 class MonitoringSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="monitoring_")
     api_key: str | None = Field(default=None)
-    graphql_service_url: HttpUrl = HttpUrl("http://nginx/graphql")
+    graphql_service_url: HttpUrl = HttpUrl("http://nginx:9090/graphql")
     screenshot_service_url: HttpUrl = HttpUrl("http://shootme:8002")
-    nginx_service_url: HttpUrl = HttpUrl("http://nginx")
-    screenshot_target_url: HttpUrl = HttpUrl("http://nginx")
+    nginx_service_url: HttpUrl = HttpUrl("http://nginx:9090")
+    screenshot_target_url: HttpUrl = HttpUrl("http://nginx:9090")
     search_export_query: str = ""
     user_sub: str | None = None
     min_update_interval_in_days: int = Field(default=7, ge=1)
@@ -319,6 +319,7 @@ class Settings(BaseSettings):
     monitoring_settings: MonitoringSettings = MonitoringSettings()
     system_user_sub: str | None = None
     system_user_api_key: str | None = Field(default=None)
+    max_page_size: int = Field(default=20, gt=0, le=100)
 
     # config file paths
     wfs_config_path: str | None = None

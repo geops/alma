@@ -9,6 +9,7 @@ describe("Dialog component", () => {
     );
     cy.get("h2").contains("Foo");
     cy.contains("Bar");
+    cy.get('[data-dialog="dialog-body"]').should("contain", "Bar");
   });
 
   it("does not render when closed", () => {
@@ -32,7 +33,7 @@ describe("Dialog component", () => {
   });
 
   describe("closeOnClickOutside=true (default)", () => {
-    it.only("closes when clicking the backdrop", () => {
+    it("closes when clicking the backdrop", () => {
       cy.mount(
         <AppDialog isOpen onClose={cy.stub().as("onClose")} title="Foo">
           Bar

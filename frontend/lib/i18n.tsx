@@ -1,6 +1,6 @@
 import { gql } from "graphql-request";
 import set from "lodash/set";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, use, useEffect, useMemo, useState } from "react";
 // import rosetta from 'rosetta/debug';
 import rosetta from "rosetta";
 import useSWRImmutable from "swr/immutable";
@@ -174,7 +174,7 @@ export function I18n({ children }: { children: ReactNode }) {
   }, [error, isLoading]);
 
   return isReady ? (
-    <I18nContext.Provider value={i18nWrapper}>{children}</I18nContext.Provider>
+    <I18nContext value={i18nWrapper}>{children}</I18nContext>
   ) : (
     <div className="flex h-screen items-center justify-center">
       <Spinner className="w-32" />
@@ -183,6 +183,6 @@ export function I18n({ children }: { children: ReactNode }) {
 }
 
 export function useI18n() {
-  const instance = useContext(I18nContext);
+  const instance = use(I18nContext);
   return instance;
 }

@@ -1,4 +1,4 @@
-FROM node:22.23.4-alpine AS frontend
+FROM node:24.22.1-alpine AS frontend
 
 ARG NEXT_PUBLIC_VERSION="0.0.0"
 RUN echo "${NEXT_PUBLIC_VERSION}"
@@ -13,11 +13,10 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY frontend ./
 RUN CI=true pnpm build
 
-FROM nginxinc/nginx-unprivileged:1.27
+FROM nginxinc/nginx-unprivileged:1.27 as common
 
 COPY --from=frontend /frontend/out /var/www/alma-frontend
 COPY --from=frontend /frontend/next-routes.conf /srv/alma/
-COPY docker/nginx/prod.conf /etc/nginx/conf.d/default.conf
 COPY docker/nginx/dummy.conf /etc/nginx/allow_ips.conf
 COPY docker/nginx/review.htpasswd /etc/nginx/review.htpasswd
 COPY docker/nginx/basic_auth.conf /etc/nginx/interlis_exports.conf
@@ -27,7 +26,13 @@ COPY docker/nginx/basic_auth.conf /etc/nginx/kbs_mapserver.conf
 # Make filesystem permissions compatible with arbitrary UIDs (OpenShift style).
 USER root
 RUN chgrp -R 0 /var/cache/nginx /var/log/nginx \
-    && chmod -R g+rwX /var/cache/nginx /var/log/nginx
+&& chmod -R g+rwX /var/cache/nginx /var/log/nginx
 USER 101
 
 CMD ["nginx", "-g", "daemon off;"]
+
+FROM common as final-tls
+COPY docker/nginx/prod.conf /etc/nginx/conf.d/default.conf
+
+FROM common as final-no-tls
+COPY docker/nginx/prod-no-tls.conf /etc/nginx/conf.d/default.conf

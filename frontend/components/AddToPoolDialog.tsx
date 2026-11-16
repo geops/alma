@@ -22,7 +22,7 @@ import type {
 
 const queryPools = gql`
   query addToPoolDialog {
-    pools(perPage: 9999) {
+    pools(perPage: 20) {
       results {
         poolId
         bezeichnung
@@ -65,6 +65,7 @@ export default function AddToPoolDialog({
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState(0);
   const { data } = useSWR<AddToPoolDialogQuery>(queryPools);
+
   return (
     <Dialog
       isOpen={isOpen}

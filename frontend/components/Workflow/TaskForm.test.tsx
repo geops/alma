@@ -16,7 +16,7 @@ const task = {
   deletable: false,
   events: [],
   faelligkeitsStatus: "UEBERFAELLIG" as const,
-  folgeschritte: [],
+  folgeschritte: { availableOptions: [], problems: [] },
   oeffentlich: false,
   readOnly: false,
   sachbearbeitung: [],

@@ -57,14 +57,6 @@
       "count": 1
     }
   },
-  "cypress/support/component.tsx": {
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
   "cypress/support/e2e.ts": {
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 2

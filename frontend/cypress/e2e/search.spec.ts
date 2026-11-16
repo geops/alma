@@ -716,6 +716,8 @@ describe("Search Page", () => {
         req.alias = "QuickSearch";
       } else if (req.body.query.includes("query vflHistory")) {
         req.alias = "VflHistory";
+      } else if (req.body.query.includes("query useCurrentUser")) {
+        req.alias = "CurrentUser";
       }
     });
     cy.visit("/search", {
@@ -724,6 +726,7 @@ describe("Search Page", () => {
       },
     });
     cy.wait("@Search");
+    cy.wait("@CurrentUser");
 
     cy.get("[data-test=Layout-QuickSearch]").should("not.exist");
     cy.get("input[name=quickSearch]").click();

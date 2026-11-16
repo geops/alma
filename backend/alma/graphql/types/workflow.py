@@ -5,8 +5,13 @@ from uuid import UUID
 
 import strawberry
 import strawberry.scalars
+from business_workflow_manager import dto as wf_dto
 from business_workflow_manager import models as wf_models
-from business_workflow_manager.types import NodeStatus, NodeType
+from business_workflow_manager.types import (
+    NextStepUnavailableReason,
+    NodeStatus,
+    NodeType,
+)
 from sqlalchemy import (
     BinaryExpression,
     ColumnElement,
@@ -56,6 +61,21 @@ class TaskStatus(Enum):
     ABGESCHLOSSEN = NodeStatus.FINISHED
     UEBERSPRUNGEN = NodeStatus.SKIPPED
     RUHEND = NodeStatus.INACTIVE
+
+
+class FolgeschrittGrund(Enum):
+    TASK_NICHT_ABGESCHLOSSEN = NextStepUnavailableReason.TASK_CLOSED
+    PROZESS_BEENDET = NextStepUnavailableReason.END_OF_WORKFLOW
+    SCHRITT_NICHT_ABGESCHLOSSEN = NextStepUnavailableReason.STEP_NOT_CLOSED
+    TASK_OHNE_WORKFLOW = NextStepUnavailableReason.TASK_WITHOUT_WORKFLOW
+
+    def to_problem(self) -> Problem:
+        return Problem(
+            message=self.name,
+            problem_code=ProblemCode.UNAVAILABLE_FOLGESCHRITT,
+            field="folgeschritte",
+            message_code=f"workflow.folgeschrittGrund.{self.name}",
+        )
 
 
 @strawberry.enum
@@ -274,6 +294,29 @@ class TaskOption:
     type: TaskType
 
 
+@strawberry.type
+class StepInfo:
+    available_options: list[TaskOption]
+    problems: list[Problem]
+
+    @classmethod
+    def from_dto(cls, info: wf_dto.StepInfo) -> Self:
+        return cls(
+            available_options=[
+                TaskOption(
+                    option_id=to_id(item.wf_config_id),
+                    title=item.title,
+                    type=TaskType(item.type),
+                )
+                for item in info.available_options
+            ],
+            problems=[
+                FolgeschrittGrund(reason).to_problem()
+                for reason in info.unavailable_reasons
+            ],
+        )
+
+
 # Note: all subclasses of this interfaces need to be registered with the schema explicitly,
 # or they won't be included in the schema, as long as all queries only return the interface type.
 # See `alma.graphql.schema`.
@@ -383,17 +426,9 @@ class Task:
                 raise ValueError("Unhandled node type: {type(node)}")
 
     @strawberry.field
-    def folgeschritte(self, info: Info) -> list[TaskOption]:
+    def folgeschritte(self, info: Info) -> StepInfo:
         mgr = info.context.workflow_manager
-
-        return [
-            TaskOption(
-                option_id=to_id(item.wf_config_id),
-                title=item.title,
-                type=TaskType(item.type),
-            )
-            for item in mgr.get_next_steps(self._node.wf_node_id)
-        ]
+        return StepInfo.from_dto(mgr.get_next_steps(self._node.wf_node_id))
 
 
 @strawberry.type
@@ -610,29 +645,58 @@ class PaginatedTaskResult:
 
 
 @strawberry.input
-class StartProzessInput:
+class StartStandortProzessInput:
     vflz_id: strawberry.ID
     option_id: strawberry.ID
 
 
 @strawberry.type
-class StartProzessResult:
+class StartStandortProzessResult:
     prozess: Prozess
 
 
 @strawberry.input
-class StartTaskInput:
+class StartPoolProzessInput:
+    pool_id: strawberry.ID
+    option_id: strawberry.ID
+
+
+@strawberry.type
+class StartPoolProzessResult:
+    prozesse: list[Prozess]
+
+
+@strawberry.input
+class ValidatePoolFolgeschrittInput:
+    pool_id: strawberry.ID
+    option_id: strawberry.ID | None = None
+
+
+@strawberry.input
+class StartPoolFolgeschrittInput:
+    pool_id: strawberry.ID
+    option_id: strawberry.ID
+    task_id: strawberry.ID
+
+
+@strawberry.type
+class StartPoolFolgeschrittResult:
+    tasks: list[Task]
+
+
+@strawberry.input
+class StartStandortFolgeschrittInput:
     task_id: strawberry.ID
     option_id: strawberry.ID
 
 
 @strawberry.type
-class StartTaskResult:
+class StartStandortFolgeschrittResult:
     task: Task
 
 
 @strawberry.input
-class CreateNotizInput:
+class CreateStandortNotizInput:
     title: str
     start_datum: date
     vflz_id: strawberry.ID
@@ -644,7 +708,18 @@ class CreateNotizInput:
 
 
 @strawberry.input
-class CreateDokumentInput:
+class CreatePoolNotizInput:
+    title: str
+    start_datum: date
+    pool_id: strawberry.ID
+    notiz: str
+    kategorie: CodeInput | None
+    oeffentlich: bool
+    url: str | None = None
+
+
+@strawberry.input
+class CreateStandortDokumentInput:
     title: str
     start_datum: date
     vflz_id: strawberry.ID
@@ -657,13 +732,34 @@ class CreateDokumentInput:
 
 
 @strawberry.input
-class CreateAufgabeInput:
+class CreatePoolDokumentInput:
+    title: str
+    start_datum: date
+    pool_id: strawberry.ID
+    dokument: str
+    notiz: str
+    kategorie: CodeInput | None
+    oeffentlich: bool
+    url: str | None = None
+
+
+@strawberry.input
+class CreateStandortAufgabeInput:
     title: str
     start_datum: date
     faelligkeits_datum: date
     vflz_id: strawberry.ID
     notiz: str | None
     task_id: strawberry.ID | None = None
+
+
+@strawberry.input
+class CreatePoolAufgabeInput:
+    title: str
+    start_datum: date
+    faelligkeits_datum: date
+    pool_id: strawberry.ID
+    notiz: str | None
 
 
 @strawberry.input

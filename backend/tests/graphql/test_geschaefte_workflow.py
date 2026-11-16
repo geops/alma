@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import date, datetime
 from io import StringIO
 from pathlib import Path
 
 import business_workflow_manager.models as wf_models
 import pytest
+from business_workflow_manager.types import NodeStatus
 from pytest import raises as assert_raises
 from sqlalchemy import select
 from utils import QueryError, make_vflz
@@ -15,8 +16,8 @@ pytestmark = [
 
 
 start_prozess_mutation = """
-    mutation m($data: StartProzessInput!) {
-        startProzess(data: $data) {
+    mutation m($data: StartStandortProzessInput!) {
+        startStandortProzess(data: $data) {
             prozess {
                 taskId title
                 sachbearbeitung { subjekt { user { username } } }
@@ -25,8 +26,8 @@ start_prozess_mutation = """
     }
 """
 start_folgeschritt_mutation = """
-    mutation m($data: StartTaskInput!) {
-        startFolgeschritt(data: $data) {
+    mutation m($data: StartStandortFolgeschrittInput!) {
+        startStandortFolgeschritt(data: $data) {
             task {
                 taskId title
                 sachbearbeitung { subjekt { user { username } } }
@@ -37,7 +38,10 @@ start_folgeschritt_mutation = """
 folgeschritte_query = """
     query q($taskId: ID!) {
         task(taskId: $taskId) {
-            folgeschritte { optionId title type }
+            folgeschritte {
+                availableOptions { optionId title type }
+                problems { message problemCode field messageCode }
+            }
         }
     }
 """
@@ -45,7 +49,10 @@ update_dokument_mutation = """
     mutation m($data: UpdateDokumentInput!) {
         updateDokument(data: $data) {
             status
-            folgeschritte { optionId title type }
+            folgeschritte {
+                availableOptions { optionId title type }
+                problems { message problemCode field messageCode }
+            }
         }
     }
 """
@@ -54,7 +61,10 @@ update_formular_mutation = """
         updateFormular(data: $data) {
         ... on Formular {
                 status
-                folgeschritte { optionId title type }
+                folgeschritte {
+                    availableOptions { optionId title type }
+                    problems { message problemCode field messageCode }
+                }
             }
         }
     }
@@ -64,18 +74,34 @@ update_aufgabe_mutation = """
         updateAufgabe(data: $data) {
         ... on Aufgabe {
                 status
-                folgeschritte { optionId title type }
+                folgeschritte {
+                    availableOptions { optionId title type }
+                    problems { message problemCode field messageCode }
+                }
             }
         }
     }
 """
 
 
+def _problems(*reasons: str) -> list[dict[str, str]]:
+    """Expected `folgeschritte.problems` for the given FolgeschrittGrund names."""
+    return [
+        {
+            "message": reason,
+            "problemCode": "UNAVAILABLE_FOLGESCHRITT",
+            "field": "folgeschritte",
+            "messageCode": f"workflow.folgeschrittGrund.{reason}",
+        }
+        for reason in reasons
+    ]
+
+
 @pytest.fixture
 def simple_workflow(workflow_manager) -> wf_models.Workflow:
     path = Path(__file__).parent / "workflows" / "simple.yml"
     with path.open() as f:
-        workflow, _ = workflow_manager.load_workflow_from_file(f)
+        workflow = workflow_manager.load_workflow_from_file(f).workflow
     return workflow
 
 
@@ -184,13 +210,85 @@ def test_query_vflz_prozesse_does_not_include_process_if_limit_is_reached(
     assert result.data == {"vflz": {"prozesse": []}}
 
 
+def test_query_global_prozesse_fails_with_insufficient_permissions(
+    session, run_query, simple_workflow: wf_models.Workflow, as_lesen_sachdaten
+):
+    query = """
+        query q {
+            prozesse {
+                optionId
+                title
+                type
+            }
+        }
+    """
+    with assert_raises(QueryError, match="not allowed"):
+        run_query(query=query)
+
+
+def test_query_global_prozesse(
+    session, run_query, simple_workflow: wf_models.Workflow, as_lesen_geschaefte
+):
+    query = """
+        query q {
+            prozesse {
+                optionId
+                title
+                type
+            }
+        }
+    """
+
+    result = run_query(query)
+    assert result.data == {
+        "prozesse": [
+            {
+                "optionId": str(simple_workflow.wf_config_id),
+                "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:title",
+                "type": "PROZESS",
+            },
+        ],
+    }
+
+
+def test_query_global_prozesse_includes_process_even_if_limit_is_reached(
+    session, run_query, simple_workflow: wf_models.Workflow, as_lesen_geschaefte
+):
+    vflz = make_vflz(session, "Standort 1")
+    simple_workflow.max_per_entity = 0
+    workflow_node = simple_workflow.create_node(str(vflz.vflz_id))
+    session.add(workflow_node)
+    session.commit()
+
+    query = """
+        query q {
+            prozesse {
+                optionId
+                title
+                type
+            }
+        }
+    """
+
+    result = run_query(query)
+    assert result.data == {
+        "prozesse": [
+            {
+                "optionId": str(simple_workflow.wf_config_id),
+                "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:title",
+                "type": "PROZESS",
+            },
+        ],
+    }
+
+
 def test_start_prozess_fails_with_insufficient_permission(
     session, run_query, simple_workflow: wf_models.Workflow, as_lesen_geschaefte
 ):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-        mutation m($data: StartProzessInput!) {
-            startProzess(data: $data) {
+        mutation m($data: StartStandortProzessInput!) {
+            startStandortProzess(data: $data) {
                 prozess { taskId title }
             }
         }
@@ -213,8 +311,8 @@ def test_start_prozess_creates_workflow_node_with_current_user_as_sachbearbeitun
 ):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-        mutation m($data: StartProzessInput!) {
-            startProzess(data: $data) {
+        mutation m($data: StartStandortProzessInput!) {
+            startStandortProzess(data: $data) {
                 prozess {
                     taskId title
                     sachbearbeitung { subjekt { user { username } } }
@@ -239,7 +337,7 @@ def test_start_prozess_creates_workflow_node_with_current_user_as_sachbearbeitun
         )
     ).one()
 
-    assert result.data["startProzess"] == {
+    assert result.data["startStandortProzess"] == {
         "prozess": {
             "sachbearbeitung": [{"subjekt": {"user": {"username": "alma-test"}}}],
             "taskId": str(node.wf_node_id),
@@ -256,8 +354,8 @@ def test_start_prozess_fails_if_limit_is_reached(
     session.commit()
 
     mutation = """
-        mutation m($data: StartProzessInput!) {
-            startProzess(data: $data) {
+        mutation m($data: StartStandortProzessInput!) {
+            startStandortProzess(data: $data) {
                 prozess { taskId title }
             }
         }
@@ -295,7 +393,7 @@ def test_work_through_process(
         )
     ).one()
 
-    assert result.data["startProzess"] == {
+    assert result.data["startStandortProzess"] == {
         "prozess": {
             "taskId": str(workflow_node.wf_node_id),
             "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:title",
@@ -304,13 +402,16 @@ def test_work_through_process(
     }
 
     result = run_query(folgeschritte_query, {"taskId": str(workflow_node.wf_node_id)})
-    assert result.data["task"]["folgeschritte"] == [
-        {
-            "optionId": str(simple_workflow.tasks["task_1"].wf_config_id),
-            "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:title",
-            "type": "AUFGABE",
-        }
-    ]
+    assert result.data["task"]["folgeschritte"] == {
+        "availableOptions": [
+            {
+                "optionId": str(simple_workflow.tasks["task_1"].wf_config_id),
+                "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:title",
+                "type": "AUFGABE",
+            }
+        ],
+        "problems": [],
+    }
 
     result = run_query(
         start_folgeschritt_mutation,
@@ -322,22 +423,27 @@ def test_work_through_process(
         },
     )
     assert (
-        result.data["startFolgeschritt"]["task"]["title"]
+        result.data["startStandortFolgeschritt"]["task"]["title"]
         == "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:title"
     )
-    assert result.data["startFolgeschritt"]["task"]["sachbearbeitung"] == [
+    assert result.data["startStandortFolgeschritt"]["task"]["sachbearbeitung"] == [
         {"subjekt": {"user": {"username": "alma-test"}}},
     ]
-    task_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    task_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
 
     result = run_query(folgeschritte_query, {"taskId": task_node_id})
-    assert result.data["task"]["folgeschritte"] == [
-        {
-            "optionId": str(simple_workflow.tasks["task_1"].steps[0].step.wf_config_id),
-            "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:step:1:title",
-            "type": "DOKUMENT",
-        }
-    ]
+    assert result.data["task"]["folgeschritte"] == {
+        "availableOptions": [
+            {
+                "optionId": str(
+                    simple_workflow.tasks["task_1"].steps[0].step.wf_config_id
+                ),
+                "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:step:1:title",
+                "type": "DOKUMENT",
+            }
+        ],
+        "problems": [],
+    }
 
     result = run_query(
         start_folgeschritt_mutation,
@@ -351,13 +457,13 @@ def test_work_through_process(
         },
     )
     assert (
-        result.data["startFolgeschritt"]["task"]["title"]
+        result.data["startStandortFolgeschritt"]["task"]["title"]
         == "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:step:1:title"
     )
-    assert result.data["startFolgeschritt"]["task"]["sachbearbeitung"] == [
+    assert result.data["startStandortFolgeschritt"]["task"]["sachbearbeitung"] == [
         {"subjekt": {"user": {"username": "alma-test"}}},
     ]
-    document_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    document_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
 
     result = run_query(
         update_dokument_mutation,
@@ -376,13 +482,18 @@ def test_work_through_process(
         },
     )
     assert result.data["updateDokument"]["status"] == "ABGESCHLOSSEN"
-    assert result.data["updateDokument"]["folgeschritte"] == [
-        {
-            "optionId": str(simple_workflow.tasks["task_1"].steps[1].step.wf_config_id),
-            "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:step:2:title",
-            "type": "FORMULAR",
-        }
-    ]
+    assert result.data["updateDokument"]["folgeschritte"] == {
+        "availableOptions": [
+            {
+                "optionId": str(
+                    simple_workflow.tasks["task_1"].steps[1].step.wf_config_id
+                ),
+                "title": "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:step:2:title",
+                "type": "FORMULAR",
+            }
+        ],
+        "problems": [],
+    }
 
     result = run_query(
         start_folgeschritt_mutation,
@@ -396,13 +507,13 @@ def test_work_through_process(
         },
     )
     assert (
-        result.data["startFolgeschritt"]["task"]["title"]
+        result.data["startStandortFolgeschritt"]["task"]["title"]
         == "wf:b6395856-9556-48b4-828f-6610d153a3bc:task:task_1:step:2:title"
     )
-    assert result.data["startFolgeschritt"]["task"]["sachbearbeitung"] == [
+    assert result.data["startStandortFolgeschritt"]["task"]["sachbearbeitung"] == [
         {"subjekt": {"user": {"username": "alma-test"}}},
     ]
-    form_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    form_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
 
     result = run_query(
         update_formular_mutation,
@@ -420,7 +531,267 @@ def test_work_through_process(
     )
     assert result.data["updateFormular"] == {
         "status": "ABGESCHLOSSEN",
-        "folgeschritte": [],
+        "folgeschritte": {
+            "availableOptions": [],
+            "problems": _problems("PROZESS_BEENDET"),
+        },
+    }
+
+
+CONDITIONAL_WORKFLOW = """
+workflow:
+  title: Workflow with a form deciding the next task
+  version: 1
+  min_per_entity: 0
+  max_per_entity: null
+  start_task_ref: task_1
+  tasks:
+    task_1:
+      title: Task-1
+      steps:
+        - title: Decision
+          type: form
+          name: decision
+          fields:
+            - name: approved
+              type: bool
+      links:
+        - task_ref: task_2
+          condition: form.decision.approved == `true`
+    task_2:
+      title: Task-2
+      steps: []
+      links:
+        - task_ref: END
+    END:
+      title: __END__
+      steps: []
+      links: []
+"""
+
+
+def _start_form(
+    session, run_query, workflow_manager, workflow_yaml: str = CONDITIONAL_WORKFLOW
+) -> tuple[wf_models.Workflow, str]:
+    """Start the workflow up to the form of task_1, return the form task id."""
+    workflow = workflow_manager.load_workflow_from_file(
+        StringIO(workflow_yaml)
+    ).workflow
+    session.flush()
+    vflz = make_vflz(session, "Standort 1")
+    result = run_query(
+        start_prozess_mutation,
+        {"data": {"vflzId": str(vflz.vflz_id), "optionId": str(workflow.wf_config_id)}},
+    )
+    task_id = result.data["startStandortProzess"]["prozess"]["taskId"]
+    for option_id in (
+        workflow.tasks["task_1"].wf_config_id,
+        workflow.tasks["task_1"].steps[0].step.wf_config_id,
+    ):
+        result = run_query(
+            start_folgeschritt_mutation,
+            {"data": {"taskId": task_id, "optionId": str(option_id)}},
+        )
+        task_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
+    return workflow, task_id
+
+
+def _update_form(run_query, form_task_id: str, value: bool) -> dict:
+    result = run_query(
+        update_formular_mutation,
+        {
+            "data": {
+                "taskId": form_task_id,
+                "title": "Form 1",
+                "startDatum": "2025-03-19",
+                "notiz": "",
+                "eingaben": {"approved": value},
+                "sachbearbeitung": [],
+                "sonstigeBeteiligte": [],
+            }
+        },
+    )
+    return result.data["updateFormular"]
+
+
+def test_folgeschritte_schritt_nicht_abgeschlossen(
+    session, run_query, as_bearbeiten_geschaefte, workflow_manager
+):
+    _, form_task_id = _start_form(session, run_query, workflow_manager)
+
+    result = run_query(folgeschritte_query, {"taskId": form_task_id})
+
+    assert result.data["task"] == {
+        "folgeschritte": {
+            "availableOptions": [],
+            "problems": _problems("SCHRITT_NICHT_ABGESCHLOSSEN"),
+        }
+    }
+
+
+def test_folgeschritte_schritt_nicht_abgeschlossen_if_selection_missing(
+    session, run_query, as_bearbeiten_geschaefte, workflow_manager
+):
+    _, form_task_id = _start_form(session, run_query, workflow_manager)
+
+    assert _update_form(run_query, form_task_id, False) == {
+        "status": "ABGESCHLOSSEN",
+        "folgeschritte": {
+            "availableOptions": [],
+            "problems": _problems("SCHRITT_NICHT_ABGESCHLOSSEN"),
+        },
+    }
+
+
+def test_folgeschritte_without_reasons_if_selection_made(
+    session, run_query, as_bearbeiten_geschaefte, workflow_manager
+):
+    workflow, form_task_id = _start_form(session, run_query, workflow_manager)
+
+    assert _update_form(run_query, form_task_id, True) == {
+        "status": "ABGESCHLOSSEN",
+        "folgeschritte": {
+            "availableOptions": [
+                {
+                    "optionId": str(workflow.tasks["task_2"].wf_config_id),
+                    "title": workflow.tasks["task_2"].title,
+                    "type": "AUFGABE",
+                }
+            ],
+            "problems": [],
+        },
+    }
+
+
+CONDITIONAL_WORKFLOW_WITH_END = CONDITIONAL_WORKFLOW.replace(
+    "condition: form.decision.approved == `true`",
+    "condition: form.decision.approved == `true`\n        - task_ref: END",
+)
+
+
+def test_folgeschritte_returns_options_and_problems(
+    session, run_query, as_bearbeiten_geschaefte, workflow_manager
+):
+    workflow, form_task_id = _start_form(
+        session, run_query, workflow_manager, CONDITIONAL_WORKFLOW_WITH_END
+    )
+
+    # The END link is never offered, but reported next to the valid option.
+    assert _update_form(run_query, form_task_id, True)["folgeschritte"] == {
+        "availableOptions": [
+            {
+                "optionId": str(workflow.tasks["task_2"].wf_config_id),
+                "title": workflow.tasks["task_2"].title,
+                "type": "AUFGABE",
+            }
+        ],
+        "problems": _problems("PROZESS_BEENDET"),
+    }
+
+
+def test_folgeschritte_problems_are_ordered_by_priority(
+    session, run_query, as_bearbeiten_geschaefte, workflow_manager
+):
+    _, form_task_id = _start_form(
+        session, run_query, workflow_manager, CONDITIONAL_WORKFLOW_WITH_END
+    )
+
+    assert _update_form(run_query, form_task_id, False)["folgeschritte"] == {
+        "availableOptions": [],
+        "problems": _problems("PROZESS_BEENDET", "SCHRITT_NICHT_ABGESCHLOSSEN"),
+    }
+
+
+def _start_task_1(workflow_manager, session, simple_workflow: wf_models.Workflow):
+    vflz = make_vflz(session, "Standort 1")
+    workflow_node = workflow_manager.start_workflow(
+        simple_workflow.wf_config_id, str(vflz.vflz_id)
+    )
+    task_node = workflow_manager.start_next_step(
+        workflow_node.wf_node_id, simple_workflow.tasks["task_1"].wf_config_id
+    )
+    return workflow_node, task_node
+
+
+def test_folgeschritte_task_nicht_abgeschlossen_for_step_of_closed_task(
+    session,
+    run_query,
+    workflow_manager,
+    simple_workflow: wf_models.Workflow,
+    as_bearbeiten_geschaefte,
+):
+    _, task_node = _start_task_1(workflow_manager, session, simple_workflow)
+    document_node = workflow_manager.start_next_step(
+        task_node.wf_node_id,
+        simple_workflow.tasks["task_1"].steps[0].step.wf_config_id,
+    )
+    workflow_manager.update_document_node(document_node.wf_node_id)
+    workflow_manager.update_task_node(task_node.wf_node_id, status=NodeStatus.FINISHED)
+
+    result = run_query(folgeschritte_query, {"taskId": str(document_node.wf_node_id)})
+
+    assert result.data["task"]["folgeschritte"] == {
+        "availableOptions": [],
+        "problems": _problems("TASK_NICHT_ABGESCHLOSSEN"),
+    }
+
+
+def test_folgeschritte_task_nicht_abgeschlossen_for_closed_prozess(
+    session,
+    run_query,
+    workflow_manager,
+    simple_workflow: wf_models.Workflow,
+    as_bearbeiten_geschaefte,
+):
+    vflz = make_vflz(session, "Standort 1")
+    workflow_node = workflow_manager.start_workflow(
+        simple_workflow.wf_config_id, str(vflz.vflz_id)
+    )
+    workflow_manager.update_workflow_node(
+        workflow_node.wf_node_id, status=NodeStatus.FINISHED
+    )
+
+    result = run_query(folgeschritte_query, {"taskId": str(workflow_node.wf_node_id)})
+
+    assert result.data["task"]["folgeschritte"] == {
+        "availableOptions": [],
+        "problems": _problems("TASK_NICHT_ABGESCHLOSSEN"),
+    }
+
+
+def test_folgeschritte_task_ohne_workflow(
+    session, run_query, workflow_manager, as_bearbeiten_geschaefte
+):
+    vflz = make_vflz(session, "Standort 1")
+    task_node = workflow_manager.create_task_node(
+        str(vflz.vflz_id), "Aufgabe", datetime(2025, 3, 19)
+    )
+
+    result = run_query(folgeschritte_query, {"taskId": str(task_node.wf_node_id)})
+
+    assert result.data["task"]["folgeschritte"] == {
+        "availableOptions": [],
+        "problems": _problems("TASK_OHNE_WORKFLOW"),
+    }
+
+
+@pytest.mark.parametrize("status", [NodeStatus.SKIPPED, NodeStatus.INACTIVE])
+def test_folgeschritte_without_problems_for_skipped_or_inactive_task(
+    session,
+    run_query,
+    workflow_manager,
+    simple_workflow: wf_models.Workflow,
+    as_bearbeiten_geschaefte,
+    status,
+):
+    _, task_node = _start_task_1(workflow_manager, session, simple_workflow)
+    workflow_manager.update_task_node(task_node.wf_node_id, status=status)
+
+    result = run_query(folgeschritte_query, {"taskId": str(task_node.wf_node_id)})
+
+    assert result.data["task"]["folgeschritte"] == {
+        "availableOptions": [],
+        "problems": [],
     }
 
 
@@ -455,7 +826,7 @@ def test_can_close_parent_task_if_all_steps_are_closed(
         },
     )
 
-    task_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    task_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
     result = run_query(
         start_folgeschritt_mutation,
         variable_values={
@@ -467,7 +838,7 @@ def test_can_close_parent_task_if_all_steps_are_closed(
             }
         },
     )
-    document_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    document_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
     result = run_query(
         update_dokument_mutation,
         variable_values={
@@ -496,7 +867,7 @@ def test_can_close_parent_task_if_all_steps_are_closed(
             }
         },
     )
-    form_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    form_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
 
     result = run_query(
         update_formular_mutation,
@@ -535,8 +906,8 @@ def test_can_close_parent_task_if_all_steps_are_closed(
 def test_create_new_dokument(session, run_query, as_bearbeiten_geschaefte):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateDokumentInput!) {
-        createDokument(data: $data) {
+    mutation m($data: CreateStandortDokumentInput!) {
+        createStandortDokument(data: $data) {
             startDatum
             endDatum
             faelligkeitsDatum
@@ -567,7 +938,7 @@ def test_create_new_dokument(session, run_query, as_bearbeiten_geschaefte):
     }
 
     result = run_query(mutation, variables)
-    assert result.data["createDokument"] == {
+    assert result.data["createStandortDokument"] == {
         "startDatum": "2020-01-01",
         "endDatum": "2020-01-01",
         "notiz": "Notiz",
@@ -587,8 +958,8 @@ def test_create_new_dokument(session, run_query, as_bearbeiten_geschaefte):
 def test_create_new_aufgabe(session, run_query, as_bearbeiten_geschaefte):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateAufgabeInput!) {
-        createAufgabe(data: $data) {
+    mutation m($data: CreateStandortAufgabeInput!) {
+        createStandortAufgabe(data: $data) {
             startDatum
             endDatum
             faelligkeitsDatum
@@ -614,7 +985,7 @@ def test_create_new_aufgabe(session, run_query, as_bearbeiten_geschaefte):
     }
 
     result = run_query(mutation, variables)
-    assert result.data["createAufgabe"] == {
+    assert result.data["createStandortAufgabe"] == {
         "startDatum": "2020-01-01",
         "endDatum": None,
         "notiz": "Notiz",
@@ -633,8 +1004,8 @@ def test_create_new_aufgabe_nested_under_task(
 ):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateAufgabeInput!) {
-        createAufgabe(data: $data) {
+    mutation m($data: CreateStandortAufgabeInput!) {
+        createStandortAufgabe(data: $data) {
             taskId
             parentId
         }
@@ -651,7 +1022,7 @@ def test_create_new_aufgabe_nested_under_task(
         }
     }
     parent_result = run_query(mutation, parent_variables)
-    parent_task_id = parent_result.data["createAufgabe"]["taskId"]
+    parent_task_id = parent_result.data["createStandortAufgabe"]["taskId"]
 
     child_variables = {
         "data": {
@@ -667,7 +1038,7 @@ def test_create_new_aufgabe_nested_under_task(
 
     # The new sub-Aufgabe must be nested directly under the selected parent
     # Aufgabe, not the top-level workflow/process node.
-    assert child_result.data["createAufgabe"]["parentId"] == parent_task_id
+    assert child_result.data["createStandortAufgabe"]["parentId"] == parent_task_id
 
 
 def test_start_folgeschritt_uses_current_vflz_after_historization(
@@ -703,7 +1074,9 @@ def test_start_folgeschritt_uses_current_vflz_after_historization(
           steps: []
           links: []
     """
-    workflow, _ = workflow_manager.load_workflow_from_file(StringIO(workflow_yaml))
+    workflow = workflow_manager.load_workflow_from_file(
+        StringIO(workflow_yaml)
+    ).workflow
     session.flush()
 
     vflz = make_vflz(session, "Standort 1")
@@ -719,7 +1092,7 @@ def test_start_folgeschritt_uses_current_vflz_after_historization(
             }
         },
     )
-    workflow_node_id = result.data["startProzess"]["prozess"]["taskId"]
+    workflow_node_id = result.data["startStandortProzess"]["prozess"]["taskId"]
 
     # 2) start task1
     result = run_query(
@@ -731,7 +1104,7 @@ def test_start_folgeschritt_uses_current_vflz_after_historization(
             }
         },
     )
-    task1_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    task1_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
 
     # 3) close task1 (needed for links to be evaluated)
     run_query(
@@ -768,7 +1141,7 @@ def test_start_folgeschritt_uses_current_vflz_after_historization(
             }
         },
     )
-    task2_node_id = result.data["startFolgeschritt"]["task"]["taskId"]
+    task2_node_id = result.data["startStandortFolgeschritt"]["task"]["taskId"]
 
     task2_node = session.get_one(wf_models.TaskNode, int(task2_node_id))
     session.refresh(task2_node)

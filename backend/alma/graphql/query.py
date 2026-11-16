@@ -18,6 +18,7 @@ from alma.exceptions import CombinedIdError
 from alma.search import FIELD_CONFIG
 from alma.search.advanced import TranslatedExpression
 from alma.search.execution import check_field_permissions
+from alma.workflow_integration import is_applicable
 
 from .. import constants
 from ..codelisten import MAPPING_CODE_LISTS_TRANSLATED
@@ -75,10 +76,12 @@ from .types.translations import TranslationTable
 from .types.vflz import Language as GraphqlLang
 from .types.vflz import (
     PaginatedPoolResult,
+    PaginatedVflzResult,
     Pool,
     ValidateCreateTeilstandortInput,
     ValidateCreateVflzInput,
     ValidatedCreateVflzData,
+    ValidatedPoolFolgeschrittData,
     ValidatedVflzData,
     Vflz,
 )
@@ -87,9 +90,13 @@ from .types.workflow import (
     PaginatedTaskResult,
     SortTasks,
     Task,
+    TaskOption,
+    TaskType,
+    ValidatePoolFolgeschrittInput,
 )
 from .utils.geschaefte import get_paginated_task_result
-from .utils.schema import Info
+from .utils.pagination import validate_per_page
+from .utils.schema import Info, to_id
 
 
 @strawberry.type
@@ -160,9 +167,20 @@ class Query:
         page: int = 1,
         per_page: int = 20,
         filter_bezeichnung: str | None = None,
+        vflz_id: strawberry.ID | None = None,
     ) -> PaginatedPoolResult:
         session = info.context.db
+        validate_per_page(per_page)
         query = select(vflz_models.Pool)
+        if vflz_id:
+            query = (
+                query.join(vflz_models.VflPool)
+                .join(
+                    vflz_models.Vflz,
+                    vflz_models.VflPool.vfl_id == vflz_models.Vflz.vfl_id,
+                )
+                .where(vflz_models.Vflz.vflz_id == int(vflz_id))
+            )
         if filter_bezeichnung:
             query = query.filter(
                 vflz_models.Pool.bezeichnung.icontains(filter_bezeichnung)
@@ -196,6 +214,7 @@ class Query:
         per_page: int = 20,
     ) -> PaginatedCodeListResult:
         session = info.context.db
+        validate_per_page(per_page)
         query = select(code_models.CodeListe).join(
             translation_models.Translation,
             and_(
@@ -299,6 +318,7 @@ class Query:
         page: int = 1,
         per_page: int = 20,
     ) -> SearchResult:
+        validate_per_page(per_page)
         sort_by = sort_by or []
         filters = filters or []
         fields = fields or []
@@ -437,6 +457,7 @@ class Query:
         is_sachbearbeiter: bool = False,
     ) -> PaginatedSubjektResult:
         session = info.context.db
+        validate_per_page(per_page)
         query = select(subj_models.Subjekt).order_by(
             subj_models.Subjekt.search_key(), subj_models.Subjekt.subj_id
         )
@@ -818,6 +839,7 @@ class Query:
         reverse: bool = False,
     ) -> PaginatedTaskResult:
         session = info.context.db
+        validate_per_page(per_page)
 
         return get_paginated_task_result(
             session,
@@ -838,6 +860,116 @@ class Query:
         session = info.context.db
         node: wf_models.Node = session.get_one(wf_models.Node, int(task_id))
         return Task.from_db_node(node)
+
+    @strawberry.field(
+        permission_classes=[get_permission_class(Permission.VIEW_PROCESS)]
+    )
+    def prozesse(self, info: Info) -> list[TaskOption]:
+        session = info.context.db
+
+        workflows = session.scalars(
+            select(wf_models.Workflow).order_by(
+                wf_models.Workflow.title, wf_models.Workflow.wf_config_id
+            )
+        ).all()
+
+        return [
+            TaskOption(
+                option_id=to_id(workflow.wf_config_id),
+                title=workflow.title,
+                type=TaskType(workflow.type),
+            )
+            for workflow in workflows
+        ]
+
+    @strawberry.field(
+        permission_classes=[get_permission_class(Permission.VIEW_PROCESS)]
+    )
+    def validate_pool_folgeschritt(
+        self,
+        info: Info,
+        data: ValidatePoolFolgeschrittInput,
+        valid_page: int = 1,
+        valid_per_page: int = 20,
+        invalid_page: int = 1,
+        invalid_per_page: int = 20,
+    ) -> ValidatedPoolFolgeschrittData:
+        session = info.context.db
+        mgr = info.context.workflow_manager
+
+        valid_vflzs: list[vflz_models.Vflz] = []
+        invalid_vflzs: list[vflz_models.Vflz] = []
+        pool = session.get_one(vflz_models.Pool, int(data.pool_id))
+        pool_vflzs = list(pool.get_current_vflzs(session))
+
+        if data.option_id is None:
+            valid_vflzs = pool_vflzs
+        else:
+            wf_config = session.get_one(wf_models.WorkflowConfig, int(data.option_id))
+
+            for vflz_obj in pool_vflzs:
+                if isinstance(wf_config, wf_models.Workflow):
+                    # Starting a new process: mirror the is_applicable check used by Vflz.prozesse
+                    can_start = is_applicable(session, wf_config, str(vflz_obj.vflz_id))
+                else:
+                    # Folgeschritt (Task / Form / Document): check leaf nodes
+                    all_vflz_ids = session.scalars(
+                        select(vflz_models.Vflz.vflz_id).where(
+                            vflz_models.Vflz.vfl_id == vflz_obj.vfl_id
+                        )
+                    ).all()
+
+                    last_workflow_nodes = session.scalars(
+                        select(wf_models.Node).where(
+                            wf_models.Node.entity_id.in_(all_vflz_ids),
+                            ~wf_models.Node.wf_config_id.is_(None),
+                            wf_models.Node.next_node_id.is_(None),
+                        )
+                    ).all()
+
+                    can_start = any(
+                        int(data.option_id)
+                        in [
+                            s.wf_config_id
+                            for s in mgr.get_next_steps(
+                                node.wf_node_id
+                            ).available_options
+                        ]
+                        for node in last_workflow_nodes
+                    )
+
+                if can_start:
+                    valid_vflzs.append(vflz_obj)
+                else:
+                    invalid_vflzs.append(vflz_obj)
+
+        return ValidatedPoolFolgeschrittData(
+            valid_standorte=PaginatedVflzResult(
+                num_pages=math.ceil(len(valid_vflzs) / valid_per_page),
+                num_results_total=len(valid_vflzs),
+                results=[
+                    Vflz.from_db(v)
+                    for v in valid_vflzs[
+                        (valid_page - 1) * valid_per_page : valid_page * valid_per_page
+                    ]
+                ],
+                page=valid_page,
+                per_page=valid_per_page,
+            ),
+            invalid_standorte=PaginatedVflzResult(
+                num_pages=math.ceil(len(invalid_vflzs) / invalid_per_page),
+                num_results_total=len(invalid_vflzs),
+                results=[
+                    Vflz.from_db(v)
+                    for v in invalid_vflzs[
+                        (invalid_page - 1) * invalid_per_page : invalid_page
+                        * invalid_per_page
+                    ]
+                ],
+                page=invalid_page,
+                per_page=invalid_per_page,
+            ),
+        )
 
     @strawberry.field(permission_classes=[get_permission_class(Permission.VIEW_VFL)])
     def saved_searches(self, info: Info) -> list[SavedSearch]:

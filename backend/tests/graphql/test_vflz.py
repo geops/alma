@@ -72,7 +72,7 @@ pytestmark = [
 def simple_workflow(workflow_manager) -> wf_models.Workflow:
     path = Path(__file__).parent / "workflows" / "simple.yml"
     with path.open() as f:
-        workflow, _ = workflow_manager.load_workflow_from_file(f)
+        workflow = workflow_manager.load_workflow_from_file(f).workflow
     return workflow
 
 
@@ -1499,6 +1499,35 @@ def test_filter_pools_by_bezeichnung(session: Session, run_query):
             {"poolId": str(pool.pool_id)},
             {"poolId": str(pool3.pool_id)},
         ],
+    }
+
+
+def test_filter_pools_by_vflz_id(session: Session, run_query):
+    vflz1 = make_vflz(session, "Standort 1", vfl_id=1, combined_id="combined-id-1")
+    vflz2 = make_vflz(session, "Standort 2", vfl_id=2, combined_id="combined-id-2")
+    pool1 = make_pool(session, "pool 1")
+    pool2 = make_pool(session, "pool 2")
+    pool3 = make_pool(session, "pool 3")
+    make_vfl_pool(session, vflz1.vfl_id, pool1)
+    make_vfl_pool(session, vflz2.vfl_id, pool1)
+    make_vfl_pool(session, vflz1.vfl_id, pool2)
+    make_vfl_pool(session, vflz2.vfl_id, pool3)
+    query = """
+    query q($vflzId: ID!) {
+        pools(vflzId: $vflzId) {
+            numResultsTotal
+            results {
+                poolId
+            }
+        }
+    }
+    """
+
+    result = run_query(query, {"vflzId": str(vflz1.vflz_id)})
+    assert result.data["pools"]["numResultsTotal"] == 2
+    assert {r["poolId"] for r in result.data["pools"]["results"]} == {
+        str(pool1.pool_id),
+        str(pool2.pool_id),
     }
 
 

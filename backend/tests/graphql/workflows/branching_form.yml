@@ -1,0 +1,42 @@
+workflow:
+  key: 87197df2-7867-43e3-93d4-3b24a5384958
+  title: Branching workflow with form conditions
+  version: 1
+  start_task_ref: start_task
+  min_per_entity: 0
+  max_per_entity: null
+  tasks:
+    start_task:
+      title: Start Task
+      steps:
+        - title: Choice Form
+          type: form
+          name: choice_form
+          fields:
+            - name: field_a
+              type: bool
+            - name: field_b
+              type: bool
+      links:
+        - task_ref: task_a
+          condition: "form.choice_form.field_a"
+        - task_ref: task_b
+          condition: "form.choice_form.field_b"
+    task_a:
+      title: Task A
+      steps:
+        - title: Document A
+          type: document
+      links:
+        - task_ref: END
+    task_b:
+      title: Task B
+      steps:
+        - title: Document B
+          type: document
+      links:
+        - task_ref: END
+    END:
+      title: __END__
+      steps: []
+      links: []

@@ -11,11 +11,13 @@ import type { VflzItemFragment } from "@/lib/graphql";
 function VflzItemContainer({
   children,
   className,
+  clickable = true,
   color,
   isCombobox,
   vflzId,
 }: PropsWithChildren<{
   className: string;
+  clickable?: boolean;
   color?: string;
   isCombobox?: boolean;
   vflzId: string;
@@ -31,7 +33,7 @@ function VflzItemContainer({
     </ComboboxOption>
   ) : (
     <div
-      className={`relative bg-(--kbs-color)/20 px-3 text-xs hover:bg-(--kbs-color)/10 ${className}`}
+      className={`relative bg-(--kbs-color)/20 px-3 text-xs ${clickable ? "hover:bg-(--kbs-color)/10" : ""} ${className}`}
       data-test="VflzItem"
       style={{ "--kbs-color": color ?? "var(--color-gray-5)" } as CSSProperties}
     >
@@ -42,11 +44,13 @@ function VflzItemContainer({
 
 function VflzItem({
   className = "",
+  clickable = true,
   isCombobox,
   link = true,
   vflz,
 }: {
   className?: string;
+  clickable?: boolean;
   isCombobox?: boolean;
   link?: boolean;
   vflz: VflzItemFragment;
@@ -54,6 +58,7 @@ function VflzItem({
   return (
     <VflzItemContainer
       className={className}
+      clickable={clickable}
       color={vflz.beurteilung?.kbsInfo?.color}
       isCombobox={isCombobox}
       vflzId={vflz.vflzId}

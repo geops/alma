@@ -14,6 +14,7 @@ class ProblemCodeEnum(StrEnum):
     EXISTS = "exists"
     BUSY = "busy"
     TASK_DELETE = "task_delete"
+    UNAVAILABLE_FOLGESCHRITT = "unavailable_folgeschritt"
 
 
 if TYPE_CHECKING:

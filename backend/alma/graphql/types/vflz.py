@@ -26,6 +26,7 @@ from alma.settings import settings
 from ..scalars import GeoJSONPoint, GeoJSONPointOrMultiPolygon
 from ..utils.eigentum import get_eigentum
 from ..utils.geschaefte import get_paginated_task_result
+from ..utils.pagination import validate_per_page
 from ..utils.schema import Info, to_id
 from . import umwelt as umwelt_types
 from .bem import Bemerkung, BemerkungInput
@@ -1423,6 +1424,7 @@ class Vflz:
         sort_by: SortTasks = SortTasks.StartDatum,
         reverse: bool = False,
     ) -> PaginatedTaskResult:
+        validate_per_page(per_page)
         session = info.context.db
 
         vflz_ids = session.scalars(
@@ -1604,6 +1606,7 @@ class Pool:
     def standorte(
         self, info: Info, page: int = 1, per_page: int = 20
     ) -> "PaginatedVflzResult":
+        validate_per_page(per_page)
         session = info.context.db
         query = (
             select(vflz_models.Vflz)
@@ -1653,6 +1656,12 @@ class PaginatedVflzResult:
     results: list[Vflz]
     page: int
     per_page: int
+
+
+@strawberry.type
+class ValidatedPoolFolgeschrittData:
+    valid_standorte: PaginatedVflzResult
+    invalid_standorte: PaginatedVflzResult
 
 
 @strawberry.type

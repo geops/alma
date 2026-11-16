@@ -14,7 +14,11 @@ import jsonschema.exceptions
 import shapely
 import strawberry
 from business_workflow_manager import models as wf_models
-from business_workflow_manager.exceptions import CascadeConflict, WorkflowException
+from business_workflow_manager.exceptions import (
+    CascadeConflict,
+    InvalidWorkflowStep,
+    WorkflowException,
+)
 from business_workflow_manager.types import NodeStatus as WmNodeStatus
 from geoalchemy2 import functions
 from procrastinate.exceptions import AlreadyEnqueued
@@ -58,7 +62,7 @@ from alma.search import validate_query
 from alma.search.constants import DASHBOARD_SAVED_SEARCH_SETTINGS_KEY
 from alma.search.serialization import serialize_query
 from alma.settings import settings
-from alma.workflow_integration import set_current_vflz
+from alma.workflow_integration import is_applicable, set_current_vflz
 
 from ..constants import CodeListe, Language
 from .scalars import GeoJSONPointOrMultiPolygon
@@ -138,17 +142,24 @@ from .types.vflz import (
 from .types.workflow import (
     Aufgabe,
     BeteiligterGeschaeftInput,
-    CreateAufgabeInput,
-    CreateDokumentInput,
-    CreateNotizInput,
+    CreatePoolAufgabeInput,
+    CreatePoolDokumentInput,
+    CreatePoolNotizInput,
+    CreateStandortAufgabeInput,
+    CreateStandortDokumentInput,
+    CreateStandortNotizInput,
     Dokument,
     Formular,
     Notiz,
     Prozess,
-    StartProzessInput,
-    StartProzessResult,
-    StartTaskInput,
-    StartTaskResult,
+    StartPoolFolgeschrittInput,
+    StartPoolFolgeschrittResult,
+    StartPoolProzessInput,
+    StartPoolProzessResult,
+    StartStandortFolgeschrittInput,
+    StartStandortFolgeschrittResult,
+    StartStandortProzessInput,
+    StartStandortProzessResult,
     Task,
     TaskStatus,
     UpdateAufgabeInput,
@@ -1683,6 +1694,7 @@ class Mutation:
     )
     def create_user(self, info: Info, data: CreateUserInput) -> User | ProblemGroup:
         session = info.context.db
+
         email_exists = (
             session.scalars(
                 select(auth_models.User).where(auth_models.User.email == data.email)
@@ -1778,6 +1790,7 @@ class Mutation:
     ) -> User | ProblemGroup:
         session = info.context.db
         user = info.context.user
+
         with info.context.keycloak_maker() as kc:
             user.update(
                 keycloak_client=kc,
@@ -1796,6 +1809,7 @@ class Mutation:
         self, info: Info, data: UpdateCurrentUserPasswordInput
     ) -> ProblemGroup | None:
         user = info.context.user
+
         with info.context.keycloak_maker() as kc:
             resp = kc.put(
                 settings.oidc.keycloak_url(
@@ -1821,6 +1835,7 @@ class Mutation:
     )
     def send_password_reset_email(self, info: Info, user_id: int) -> User:
         user = info.context.db.get_one(auth_models.User, user_id)
+
         if request := info.context.request:
             redirect_uri = str(request.url_for("callback"))
         else:
@@ -1839,8 +1854,8 @@ class Mutation:
         self, info: Info, data: UpdateVflzDataInput
     ) -> Vflz | ProblemGroup:
         check_for_empty_objects(data)
-
         session = info.context.db
+
         vflz = session.get_one(vflz_models.Vflz, int(data.vflz_id))
         enforce_read_only(session, vflz)
 
@@ -1890,10 +1905,11 @@ class Mutation:
     def historize_vflz(
         self, info: Info, data: HistorizeVflzInput
     ) -> Vflz | ProblemGroup:
+        session = info.context.db
+
         if problems := data.validate():
             return ProblemGroup(problems=problems)
 
-        session = info.context.db
         vflz = session.get_one(vflz_models.Vflz, int(data.vflz_id))
         enforce_read_only(session, vflz)
 
@@ -1905,7 +1921,9 @@ class Mutation:
     def update_instance_setting(
         self, info: Info, data: UpdateInstanceSettingInput
     ) -> InstanceSetting | ProblemGroup:
+        session = info.context.db
         user = info.context.user
+
         if (
             data.category in [SettingCategory.ADMIN, SettingCategory.USER_INITIAL]
             and not user.has_permission(Permission.EDIT_SETTINGS)
@@ -1914,7 +1932,6 @@ class Mutation:
         ):
             raise error_class(error_message)
 
-        session = info.context.db
         db_setting = session.scalars(
             select(admin_models.InstanceSetting).where(
                 admin_models.InstanceSetting.key == data.key,
@@ -1943,6 +1960,7 @@ class Mutation:
         self, info: Info, data: UpdateUserSettingInput
     ) -> UserSetting:
         session = info.context.db
+
         user_setting = session.scalars(
             select(auth_models.UserSetting).where(
                 auth_models.UserSetting.key == data.key,
@@ -1962,6 +1980,7 @@ class Mutation:
     @strawberry.mutation(permission_classes=[get_permission_class(Permission.EDIT_VFL)])
     def create_pool(self, info: Info, data: CreatePoolInput) -> Pool | ProblemGroup:
         session = info.context.db
+
         if problems := data.validate(session):
             return ProblemGroup(problems=problems)
 
@@ -1977,6 +1996,7 @@ class Mutation:
         self, info: Info, data: UpdatePoolInfoInput
     ) -> Pool | ProblemGroup:
         session = info.context.db
+
         if problems := data.validate(session):
             return ProblemGroup(problems=problems)
 
@@ -1991,6 +2011,7 @@ class Mutation:
         self, info: Info, vfl_id: strawberry.ID, pool_id: strawberry.ID
     ) -> Pool:
         session = info.context.db
+
         pool = session.get_one(vflz_models.Pool, int(pool_id))
         pool.add_vfl(int(vfl_id))
         session.commit()
@@ -2002,6 +2023,7 @@ class Mutation:
         self, info: Info, vfl_id: strawberry.ID, pool_id: strawberry.ID
     ) -> Pool:
         session = info.context.db
+
         pool = session.get_one(vflz_models.Pool, int(pool_id))
         pool.remove_vfl(int(vfl_id))
         session.commit()
@@ -2010,6 +2032,7 @@ class Mutation:
     @strawberry.mutation(permission_classes=[get_permission_class(Permission.EDIT_VFL)])
     def copy_pool(self, info: Info, pool_id: strawberry.ID, bezeichnung: str) -> Pool:
         session = info.context.db
+
         pool = session.get_one(vflz_models.Pool, int(pool_id))
         copy = pool.copy(bezeichnung)
         session.add(copy)
@@ -2020,6 +2043,7 @@ class Mutation:
     @strawberry.mutation(permission_classes=[get_permission_class(Permission.EDIT_VFL)])
     def delete_pool(self, info: Info, pool_id: strawberry.ID) -> strawberry.ID:
         session = info.context.db
+
         pool = session.get_one(vflz_models.Pool, int(pool_id))
         session.delete(pool)
         session.commit()
@@ -2031,6 +2055,7 @@ class Mutation:
         self, info: Info, data: UpdateVflzEvaluationInput
     ) -> Vflz | ProblemGroup:
         session = info.context.db
+
         vflz = session.get_one(vflz_models.Vflz, int(data.vflz_id))
         enforce_read_only(session, vflz)
 
@@ -2106,6 +2131,7 @@ class Mutation:
         self, info: Info, data: UpdateVflzGeoInput
     ) -> Vflz | ProblemGroup:
         session = info.context.db
+
         vflz = session.get_one(vflz_models.Vflz, int(data.vflz_id))
         enforce_read_only(session, vflz)
 
@@ -2147,6 +2173,7 @@ class Mutation:
     @strawberry.mutation(permission_classes=[get_permission_class(Permission.EDIT_VFL)])
     def create_vflz(self, info: Info, data: CreateVflzInput) -> Vflz | ProblemGroup:
         session = info.context.db
+
         data.combined_id = data.combined_id.strip()
         if (
             data.combined_id
@@ -2224,6 +2251,7 @@ class Mutation:
         self, info: Info, data: CreateTeilstandortInput
     ) -> Vflz | ProblemGroup:
         session = info.context.db
+
         vflz = session.get_one(vflz_models.Vflz, int(data.parent_vflz_id))
         enforce_read_only(session, vflz)
         data.combined_id = data.combined_id.strip()
@@ -2294,6 +2322,7 @@ class Mutation:
         self, info: Info, data: CreateSubjektInput
     ) -> UpdateSubjektResult:
         session = info.context.db
+
         subj = subj_models.Subjekt()
         session.add(subj)
         update_subjekt(session, subj, data)
@@ -2308,6 +2337,7 @@ class Mutation:
         self, info: Info, data: UpdateSubjektInput
     ) -> UpdateSubjektResult:
         session = info.context.db
+
         subj = session.get_one(subj_models.Subjekt, int(data.subj_id))
         update_subjekt(session, subj, data)
         session.commit()
@@ -2319,6 +2349,7 @@ class Mutation:
     @strawberry.mutation(permission_classes=[get_permission_class(Permission.EDIT_VFL)])
     def delete_subjekt(self, info: Info, subj_id: strawberry.ID) -> strawberry.ID:
         session = info.context.db
+
         subj = session.get_one(subj_models.Subjekt, int(subj_id))
         session.delete(subj)
         session.commit()
@@ -2330,9 +2361,9 @@ class Mutation:
     ) -> Vflz | ProblemGroup:
         """Read-only vflzs may be mutated with respect to vollzug. This is to avoid, e.g., that a
         Vollzug is (erroneously) assigned to another behoerde and you want to revoke it."""
+        session = info.context.db
 
         problems: list[Problem] = []
-        session = info.context.db
         vflz = session.get_one(vflz_models.Vflz, int(data.vflz_id))
 
         if problems := data.validate():
@@ -2523,8 +2554,11 @@ class Mutation:
     @strawberry.mutation(
         permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
     )
-    def start_prozess(self, info: Info, data: StartProzessInput) -> StartProzessResult:
+    def start_standort_prozess(
+        self, info: Info, data: StartStandortProzessInput
+    ) -> StartStandortProzessResult:
         session = info.context.db
+        user = info.context.user
         mgr = info.context.workflow_manager
 
         try:
@@ -2534,17 +2568,47 @@ class Mutation:
 
         # Load alma node to set up sachbearbeitung and build the GraphQL response
         workflow_node = session.get_one(wf_models.WorkflowNode, node_info.wf_node_id)
-        alma_wf_models.setup_initial_sachbearbeitung(
-            session, workflow_node, info.context.user
-        )
+        alma_wf_models.setup_initial_sachbearbeitung(session, workflow_node, user)
 
         session.commit()
-        return StartProzessResult(prozess=Prozess.from_db(workflow_node))
+
+        return StartStandortProzessResult(prozess=Prozess.from_db(workflow_node))
 
     @strawberry.mutation(
         permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
     )
-    def start_folgeschritt(self, info: Info, data: StartTaskInput) -> StartTaskResult:
+    def start_pool_prozess(
+        self, info: Info, data: StartPoolProzessInput
+    ) -> StartPoolProzessResult:
+        session = info.context.db
+        user = info.context.user
+        mgr = info.context.workflow_manager
+
+        pool = session.get_one(vflz_models.Pool, int(data.pool_id))
+        prozesse: list[Prozess] = []
+        workflow = session.get_one(wf_models.Workflow, int(data.option_id))
+
+        for vflz in pool.get_current_vflzs(session):
+            if is_applicable(session, workflow, str(vflz.vflz_id)):
+                workflow_node_info = mgr.start_workflow(
+                    int(data.option_id), str(vflz.vflz_id)
+                )
+                workflow_node = session.get_one(
+                    wf_models.WorkflowNode, workflow_node_info.wf_node_id
+                )
+                alma_wf_models.setup_initial_sachbearbeitung(
+                    session, workflow_node, user
+                )
+                prozesse.append(Prozess.from_db(workflow_node))
+        session.commit()
+        return StartPoolProzessResult(prozesse=prozesse)
+
+    @strawberry.mutation(
+        permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
+    )
+    def start_standort_folgeschritt(
+        self, info: Info, data: StartStandortFolgeschrittInput
+    ) -> StartStandortFolgeschrittResult:
         session = info.context.db
         mgr = info.context.workflow_manager
 
@@ -2558,13 +2622,68 @@ class Mutation:
         )
 
         session.commit()
-        return StartTaskResult(task=Task.from_db_node(next_node))
+
+        return StartStandortFolgeschrittResult(task=Task.from_db_node(next_node))
 
     @strawberry.mutation(
         permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
     )
-    def create_notiz(self, info: Info, data: CreateNotizInput) -> Notiz:
+    def start_pool_folgeschritt(
+        self, info: Info, data: StartPoolFolgeschrittInput
+    ) -> StartPoolFolgeschrittResult:
         session = info.context.db
+        user = info.context.user
+        mgr = info.context.workflow_manager
+
+        wf_config = session.get_one(wf_models.WorkflowConfig, int(data.option_id))
+        task = session.get_one(wf_models.Node, int(data.task_id))
+
+        tasks: list[Task] = []
+        pool = session.get_one(vflz_models.Pool, int(data.pool_id))
+
+        for vflz in pool.get_current_vflzs(session):
+            # Folgeschritt (Task / Form / Document): find the leaf node to act on
+            all_vflz_ids = session.scalars(
+                select(vflz_models.Vflz.vflz_id).where(
+                    vflz_models.Vflz.vfl_id == vflz.vfl_id
+                )
+            ).all()
+
+            last_workflow_nodes = session.scalars(
+                select(wf_models.Node).where(
+                    wf_models.Node.entity_id.in_(all_vflz_ids),
+                    wf_models.Node.wf_config_id == task.wf_config_id,
+                    wf_models.Node.next_node_id.is_(None),
+                )
+            ).all()
+
+            for n in last_workflow_nodes:
+                try:
+                    next_node_info = mgr.start_next_step(
+                        n.wf_node_id, wf_config.wf_config_id
+                    )
+                    set_current_vflz(session, next_node_info.wf_node_id)
+                    next_node = session.get_one(
+                        wf_models.Node, next_node_info.wf_node_id
+                    )
+                    alma_wf_models.setup_initial_sachbearbeitung(
+                        session, next_node, user
+                    )
+                    tasks.append(Task.from_db_node(next_node))
+                except InvalidWorkflowStep:
+                    pass
+
+        session.commit()
+        return StartPoolFolgeschrittResult(tasks=tasks)
+
+    @strawberry.mutation(
+        permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
+    )
+    def create_standort_notiz(
+        self, info: Info, data: CreateStandortNotizInput
+    ) -> Notiz:
+        session = info.context.db
+        user = info.context.user
         mgr = info.context.workflow_manager
 
         note_info = mgr.create_note_node(
@@ -2578,7 +2697,7 @@ class Mutation:
         )
 
         node = session.get_one(wf_models.NoteNode, note_info.wf_node_id)
-        alma_wf_models.setup_initial_sachbearbeitung(session, node, info.context.user)
+        alma_wf_models.setup_initial_sachbearbeitung(session, node, user)
         update_node_kategorie(session, node, data.kategorie)
 
         session.commit()
@@ -2587,12 +2706,53 @@ class Mutation:
     @strawberry.mutation(
         permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
     )
-    def create_dokument(self, info: Info, data: CreateDokumentInput) -> Dokument:
+    def create_pool_notiz(self, info: Info, data: CreatePoolNotizInput) -> list[Notiz]:
         session = info.context.db
+        user = info.context.user
         mgr = info.context.workflow_manager
 
+        pool = session.get_one(vflz_models.Pool, int(data.pool_id))
+        notizen: list[Notiz] = []
+
+        for vflz in pool.get_current_vflzs(session):
+            try:
+                note_info = mgr.create_note_node(
+                    entity_id=str(vflz.vflz_id),
+                    title=data.title,
+                    started_at=_to_datetime(data.start_datum),
+                    note=data.notiz,
+                    url=data.url,
+                    is_public=data.oeffentlich,
+                    parent_id=None,
+                )
+                node = session.get_one(wf_models.NoteNode, note_info.wf_node_id)
+                alma_wf_models.setup_initial_sachbearbeitung(session, node, user)
+                update_node_kategorie(session, node, data.kategorie)
+                session.commit()
+                notizen.append(Notiz.from_db(node))
+            except Exception:
+                logger.exception(
+                    "Failed to create Notiz for vfl_id=%s in pool_id=%s",
+                    vflz.vfl_id,
+                    data.pool_id,
+                )
+                session.rollback()
+
+        return notizen
+
+    @strawberry.mutation(
+        permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
+    )
+    def create_standort_dokument(
+        self, info: Info, data: CreateStandortDokumentInput
+    ) -> Dokument:
+        session = info.context.db
+        user = info.context.user
+        mgr = info.context.workflow_manager
+
+        vflz = session.get_one(vflz_models.Vflz, int(data.vflz_id))
         doc_info = mgr.create_document_node(
-            entity_id=str(data.vflz_id),
+            entity_id=str(vflz.vflz_id),
             title=data.title,
             started_at=_to_datetime(data.start_datum),
             document_ref=data.dokument if data.dokument else "",
@@ -2603,7 +2763,7 @@ class Mutation:
         )
 
         node = session.get_one(wf_models.DocumentNode, doc_info.wf_node_id)
-        alma_wf_models.setup_initial_sachbearbeitung(session, node, info.context.user)
+        alma_wf_models.setup_initial_sachbearbeitung(session, node, user)
         update_node_kategorie(session, node, data.kategorie)
 
         session.commit()
@@ -2612,24 +2772,107 @@ class Mutation:
     @strawberry.mutation(
         permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
     )
-    def create_aufgabe(self, info: Info, data: CreateAufgabeInput) -> Aufgabe:
+    def create_pool_dokument(
+        self, info: Info, data: CreatePoolDokumentInput
+    ) -> list[Dokument]:
         session = info.context.db
+        user = info.context.user
         mgr = info.context.workflow_manager
 
+        pool = session.get_one(vflz_models.Pool, int(data.pool_id))
+        dokumente: list[Dokument] = []
+
+        for vflz in pool.get_current_vflzs(session):
+            try:
+                node_info = mgr.create_document_node(
+                    entity_id=str(vflz.vflz_id),
+                    title=data.title,
+                    started_at=_to_datetime(data.start_datum),
+                    document_ref=data.dokument if data.dokument else "",
+                    note=data.notiz,
+                    url=data.url,
+                    is_public=data.oeffentlich,
+                    parent_id=None,
+                )
+                node = session.get_one(wf_models.DocumentNode, node_info.wf_node_id)
+                alma_wf_models.setup_initial_sachbearbeitung(session, node, user)
+                update_node_kategorie(session, node, data.kategorie)
+                session.commit()
+                dokumente.append(Dokument.from_db(node))
+            except Exception:
+                logger.exception(
+                    "Failed to create Dokument for vfl_id=%s in pool_id=%s",
+                    vflz.vfl_id,
+                    data.pool_id,
+                )
+                session.rollback()
+
+        return dokumente
+
+    @strawberry.mutation(
+        permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
+    )
+    def create_standort_aufgabe(
+        self, info: Info, data: CreateStandortAufgabeInput
+    ) -> Aufgabe:
+        session = info.context.db
+        user = info.context.user
+        mgr = info.context.workflow_manager
+
+        vflz = session.get_one(vflz_models.Vflz, int(data.vflz_id))
         task_info = mgr.create_task_node(
-            entity_id=str(data.vflz_id),
+            entity_id=str(vflz.vflz_id),
             title=data.title,
             started_at=_to_datetime(data.start_datum),
             deadline=_to_datetime(data.faelligkeits_datum),
             note=data.notiz,
+            url=None,
             parent_id=int(data.task_id) if data.task_id is not None else None,
         )
 
         node = session.get_one(wf_models.TaskNode, task_info.wf_node_id)
-        alma_wf_models.setup_initial_sachbearbeitung(session, node, info.context.user)
+        alma_wf_models.setup_initial_sachbearbeitung(session, node, user)
 
         session.commit()
         return Aufgabe.from_db(node)
+
+    @strawberry.mutation(
+        permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
+    )
+    def create_pool_aufgabe(
+        self, info: Info, data: CreatePoolAufgabeInput
+    ) -> list[Aufgabe]:
+        session = info.context.db
+        user = info.context.user
+        mgr = info.context.workflow_manager
+
+        pool = session.get_one(vflz_models.Pool, int(data.pool_id))
+        aufgaben: list[Aufgabe] = []
+
+        for vflz in pool.get_current_vflzs(session):
+            try:
+                node = mgr.create_task_node(
+                    entity_id=str(vflz.vflz_id),
+                    title=data.title,
+                    started_at=_to_datetime(data.start_datum),
+                    deadline=_to_datetime(data.faelligkeits_datum),
+                    note=data.notiz,
+                    url=None,
+                    parent_id=None,
+                )
+                node = session.get_one(wf_models.TaskNode, node.wf_node_id)
+                alma_wf_models.setup_initial_sachbearbeitung(session, node, user)
+                session.commit()
+                aufgaben.append(Aufgabe.from_db(node))
+            except Exception:
+                logger.exception(
+                    "Failed to create Aufgabe for vfl_id=%s in pool_id=%s",
+                    vflz.vfl_id,
+                    data.pool_id,
+                )
+                session.rollback()
+
+        return aufgaben
 
     @strawberry.mutation(
         permission_classes=[get_permission_class(Permission.EDIT_PROCESS)]
@@ -2661,6 +2904,7 @@ class Mutation:
         self, info: Info, data: UpdateVflzBeteiligteInput
     ) -> Vflz | ProblemGroup:
         session = info.context.db
+
         vflz = session.get_one(vflz_models.Vflz, data.vflz_id)
         update_sachbearbeitung(session, vflz, data.sachbearbeitung)
         update_sonstige_beteiligte(session, vflz, data.sonstige_beteiligte)
@@ -2679,6 +2923,7 @@ class Mutation:
         self, info: Info, data: CreateSavedSearchInput
     ) -> SavedSearch | ProblemGroup:
         session = info.context.db
+
         query = select(search_models.Search.search_id).where(
             search_models.Search.name == data.name,
             search_models.Search.user == info.context.user,
@@ -2725,8 +2970,9 @@ class Mutation:
     def add_search_results_to_pool(
         self, info: Info, data: AddSearchResultsToPoolInput
     ) -> Pool:
-        user = info.context.user
         session = info.context.db
+        user = info.context.user
+
         pool = session.get_one(vflz_models.Pool, int(data.pool_id))
 
         vflz_ids, _ = alma.search.get_search_results(
@@ -2758,6 +3004,7 @@ class Mutation:
     @strawberry.mutation(permission_classes=[get_permission_class(Permission.VIEW_VFL)])
     def export_search(self, info: Info, data: ExportSearchInput) -> strawberry.ID:
         session = info.context.db
+
         export_id = uuid4().hex
         if data.query:
             serialized_query = serialize_query(validate_query(session, data.query))
@@ -2796,6 +3043,7 @@ class Mutation:
         self, info: Info, data: UpdateSavedSearchInput
     ) -> SavedSearch | ProblemGroup:
         session = info.context.db
+
         query = select(search_models.Search.search_id).where(
             search_models.Search.name == data.name,
             search_models.Search.user == info.context.user,
@@ -2847,6 +3095,7 @@ class Mutation:
         self, info: Info, data: CreateCodeListEntryInput
     ) -> CodeListEntry | ProblemGroup:
         session = info.context.db
+
         codeliste = session.get_one(code_models.CodeListe, int(data.cli_id))
         if codeliste.read_only:
             raise PermissionError("Code list is read only.")
@@ -2926,6 +3175,7 @@ class Mutation:
         self, info: Info, data: UpdateCodeListEntryInput
     ) -> CodeListEntry | ProblemGroup:
         session = info.context.db
+
         code = code_models.Code.from_db(session, data.code)
         if not data.is_active and code.codeliste.read_only:
             raise PermissionError("Code list is read only.")
@@ -3065,6 +3315,7 @@ class Mutation:
     )
     def update_code_list(self, info: Info, data: UpdateCodeListInput) -> CodeList:
         session = info.context.db
+
         code_liste = session.get_one(code_models.CodeListe, int(data.cli_id))
         msg_id = f"codelist:{data.cli_id}"
 

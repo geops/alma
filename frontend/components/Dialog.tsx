@@ -11,6 +11,7 @@ import fonts from "@/lib/fonts";
 
 export default function AppDialog({
   children,
+  className,
   closeOnClickOutside = true,
   isOpen,
   onClose,
@@ -18,6 +19,7 @@ export default function AppDialog({
   ...props
 }: {
   children: React.ReactNode;
+  className?: string;
   closeOnClickOutside?: boolean;
   isOpen: boolean;
   onClose: (value?: boolean) => void; // value = false according to headlessui doc when called by ESC and click outside DialogPanel (that includes click on CloseButton)
@@ -26,7 +28,7 @@ export default function AppDialog({
   const Comp = closeOnClickOutside ? DialogPanel : "div";
   return (
     <Dialog
-      className="relative z-50 duration-100 ease-out data-closed:opacity-0"
+      className={`relative z-50 duration-100 ease-out data-closed:opacity-0 ${className}`}
       onClose={onClose}
       open={isOpen}
       transition
@@ -36,6 +38,7 @@ export default function AppDialog({
       <div className="fixed inset-0 flex w-screen items-center justify-center">
         <Comp
           className={`${fonts} mx-8 max-h-[calc(100vh-3.5rem)] overflow-y-auto rounded-xl bg-white p-6`}
+          data-dialog="dialog-body"
         >
           <div className="mb-3 flex items-start justify-between gap-4">
             <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>

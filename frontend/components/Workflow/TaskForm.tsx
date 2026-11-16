@@ -32,7 +32,7 @@ import BeteiligteField, {
   beteiligterGeschaeftFragment,
 } from "./BeteiligteField";
 import { queryGlobal, queryVflz } from "./queries";
-import StartTaskDialog from "./StartTaskDialog";
+import StartTaskDialog from "./StartTaskDialog/index";
 import TaskIcon from "./TaskIcon";
 
 import type React from "react";
@@ -492,7 +492,7 @@ function TaskForm<T extends Mutation>({
   const { t } = useI18n();
   const { cache } = useSWRConfig();
   const formRef = useRef<HTMLFormElement>(null);
-  const updateTasks = useRef(false);
+  const updateTasksRef = useRef(false);
   const [problemTasks, setProblemTasks] = useState<ProblemTasksFragment>();
   const [isStartTaskDialogOpen, setIsStartTaskDialogOpen] = useState(false);
   const [isDeleteTaskDialogOpen, setIsDeleteTaskDialogOpen] = useState(false);
@@ -520,7 +520,9 @@ function TaskForm<T extends Mutation>({
         onClose={() => {
           setIsStartTaskDialogOpen(false);
         }}
-        options={values?.folgeschritte}
+        options={values?.folgeschritte.availableOptions}
+        optionsSource="provided"
+        problems={values?.folgeschritte.problems}
         reloadList={reloadList}
         taskId={values?.taskId}
         title={t("workflow.startFolgeschrittTitle")}
@@ -548,7 +550,7 @@ function TaskForm<T extends Mutation>({
         }}
         problemTasks={problemTasks}
         submitFormAndUpdateTasks={() => {
-          updateTasks.current = true;
+          updateTasksRef.current = true;
           formRef.current?.requestSubmit();
           setIsUpdateTasksDialogOpen(false);
         }}
@@ -569,9 +571,9 @@ function TaskForm<T extends Mutation>({
         onSubmit={async (data) => {
           const result = await client.request<T>(mutation, {
             data: toInput(t, data, task, showStatusFields, showKategorieFields),
-            updateTasks: updateTasks.current,
+            updateTasks: updateTasksRef.current,
           });
-          updateTasks.current = false;
+          updateTasksRef.current = false;
           if (result.task.__typename === "WorkflowProblemGroup") {
             setProblemTasks(result.task);
             if ((result.task.openEventsProblemTasks?.length ?? 0) > 0) {
@@ -673,7 +675,7 @@ function TaskForm<T extends Mutation>({
             <ActionMenu.Item
               data-test="WorkflowActionMenu-startTask"
               onClick={() => {
-                return setIsStartTaskDialogOpen(true);
+                setIsStartTaskDialogOpen(true);
               }}
             >
               <PlusIcon />
@@ -745,9 +747,15 @@ TaskForm.fragment = gql`
       }
     }
     folgeschritte {
-      optionId
-      title
-      type
+      availableOptions {
+        optionId
+        title
+        type
+      }
+      problems {
+        message
+        messageCode
+      }
     }
     sachbearbeitung {
       ...BeteiligteFieldBeteiligterGeschaeft

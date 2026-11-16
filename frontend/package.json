@@ -5,8 +5,8 @@
   "scripts": {
     "cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
     "cypress:run": "cypress run",
-    "cypress:run:all": "pnpm cypress:run:component && pnpm cypress:run",
     "cypress:run:component": "cypress run --component --browser chrome",
+    "cypress:run:all": "pnpm cypress:run:component && pnpm cypress:run:e2e",
     "cypress:run:e2e": "cypress run --browser chrome --headed --no-runner-ui",
     "dev": "next dev --webpack",
     "build": "next build --webpack && next-nginx-routes && node lib/generateVersionFile.mjs",

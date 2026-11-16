@@ -1,3 +1,12 @@
+## Release 1.6.18
+
+- Update to Version 1.6.1
+    - Add info if no next task is available
+    - allow reading multiple workflow files
+- Allow modifying tasks by pool
+- Limit Pagination
+- Increase timeout limit for mapserver to 10m
+
 ## Release 1.6.17
 
 - Enable TLS between containers
@@ -26,8 +35,7 @@
 
 ## Release 1.6.10
 
-- update uv, node and other certificate-related dependencies
-- update brotli dependencies
+- Fix eMudhra certificate vulnerability, fix node2shell
 
 ## Release 1.6.9
 

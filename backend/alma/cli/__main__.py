@@ -11,6 +11,7 @@ from business_workflow_manager.config import Workflow
 from business_workflow_manager.exceptions import WorkflowException
 from business_workflow_manager.graphviz import write_graph
 from business_workflow_manager.manager import WorkflowManager
+from business_workflow_manager.models import Workflow as WorkflowRecord
 from business_workflow_manager.types import Language
 from preview_generator.exception import (  # pyright: ignore[reportMissingTypeStubs]
     BuilderDependencyNotFound,
@@ -141,30 +142,87 @@ def historize_all(message: str) -> None:
         session.commit()
 
 
+DEFAULT_WORKFLOWS_DIR = Path("/app/src/workflows")
+
+
 @workflow.command("import")
 @click.option(
     "--file",
-    required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Import a single workflow file (writes generated keys back to the file).",
 )
-def wf_import(file: Path) -> None:
+@click.option(
+    "--config",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Import all workflow files listed in a plain-text file (one per line).",
+)
+@click.option(
+    "--workflows-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Base folder for the paths in --config (default: /app/src/workflows).",
+)
+def wf_import(
+    file: Path | None,
+    config: Path | None,
+    workflows_dir: Path | None,
+) -> None:
+    if (file is None) == (config is None):
+        raise click.UsageError("Exactly one of --file or --config is required.")
+    if file is not None:
+        if workflows_dir is not None:
+            raise click.UsageError("--workflows-dir can only be used with --config.")
+        _import_file(file)
+    else:
+        assert config is not None
+        _import_config(config, workflows_dir or DEFAULT_WORKFLOWS_DIR)
+
+
+def _import_file(file: Path) -> None:
+    with get_session() as db, WorkflowManager(db, wf_manager_config) as mgr:
+        add_event_handlers(mgr)
+        with file.open() as f:
+            try:
+                loaded = mgr.load_workflow_from_file(f)
+                print(f"Imported workflow: {loaded.workflow.key}")
+            except WorkflowException as e:
+                sys.exit(f"Error: {e}")
+        db.commit()
+        _write_back(mgr, loaded.workflow, loaded.config, file)
+
+
+def _write_back(
+    mgr: WorkflowManager, workflow: WorkflowRecord, config: Workflow, file: Path
+) -> None:
+    """Rewrite ``file`` if the workflow from the database differs. Call after commit."""
+    new_config = mgr.dump_workflow(workflow)
+    if new_config == config:
+        print("Workflow file unchanged")
+        return
+    try:
+        with file.open("w") as o:
+            new_config.write(o)
+    except OSError as e:
+        print(f"Not writing {file}: {e}")
+    else:
+        print(f"Writing updated workflow file to {file}")
+
+
+def _import_config(config: Path, workflows_dir: Path) -> None:
     with get_session() as db:
         with WorkflowManager(db, wf_manager_config) as mgr:
             add_event_handlers(mgr)
-            with file.open() as f:
-                try:
-                    workflow, config = mgr.load_workflow_from_file(f)
-                    print(f"Imported workflow: {workflow.key}")
-                except WorkflowException as e:
-                    sys.exit(f"Error: {e}")
+            try:
+                with config.open() as f:
+                    loaded_list = mgr.load_workflows_from_selection(f, workflows_dir)
+            except WorkflowException as e:
+                db.rollback()
+                sys.exit(f"Error: {e}")
             db.commit()
-            new_config = mgr.dump_workflow(workflow)
-        if new_config != config:
-            print(f"Writing updated workflow file to {file}")
-            with file.open("w") as o:
-                new_config.write(o)
-        else:
-            print("Workflow file unchanged")
+            for file, loaded in loaded_list:
+                print(f"Imported workflow: {loaded.workflow.key}")
+                _write_back(mgr, loaded.workflow, loaded.config, file)
+        print(f"Imported {len(loaded_list)} workflow(s).")
 
 
 @workflow.command("plot")

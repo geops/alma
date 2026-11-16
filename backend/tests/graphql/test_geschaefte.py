@@ -1843,8 +1843,8 @@ def test_query_prozess_by_id(session: Session, run_query, as_lesen_geschaefte):
 def test_create_new_notiz(session: Session, run_query, as_bearbeiten_geschaefte):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateNotizInput!) {
-        createNotiz(data: $data) {
+    mutation m($data: CreateStandortNotizInput!) {
+        createStandortNotiz(data: $data) {
             startDatum
             endDatum
             faelligkeitsDatum
@@ -1873,7 +1873,7 @@ def test_create_new_notiz(session: Session, run_query, as_bearbeiten_geschaefte)
     }
 
     result = run_query(mutation, variables)
-    assert result.data["createNotiz"] == {
+    assert result.data["createStandortNotiz"] == {
         "startDatum": "2020-01-01",
         "endDatum": "2020-01-01",
         "notiz": "Notiz",
@@ -1894,8 +1894,8 @@ def test_create_new_notiz_with_url(
 ):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateNotizInput!) {
-        createNotiz(data: $data) {
+    mutation m($data: CreateStandortNotizInput!) {
+        createStandortNotiz(data: $data) {
             notiz
             url
         }
@@ -1917,7 +1917,7 @@ def test_create_new_notiz_with_url(
         },
     )
 
-    assert result.data["createNotiz"] == {
+    assert result.data["createStandortNotiz"] == {
         "notiz": "Notiz",
         "url": "https://example.com/new-note",
     }
@@ -1926,8 +1926,8 @@ def test_create_new_notiz_with_url(
 def test_create_new_dokument(session: Session, run_query, as_bearbeiten_geschaefte):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateDokumentInput!) {
-        createDokument(data: $data) {
+    mutation m($data: CreateStandortDokumentInput!) {
+        createStandortDokument(data: $data) {
             startDatum
             endDatum
             faelligkeitsDatum
@@ -1958,7 +1958,7 @@ def test_create_new_dokument(session: Session, run_query, as_bearbeiten_geschaef
     }
 
     result = run_query(mutation, variables)
-    assert result.data["createDokument"] == {
+    assert result.data["createStandortDokument"] == {
         "startDatum": "2020-01-01",
         "endDatum": "2020-01-01",
         "notiz": "Notiz",
@@ -1980,8 +1980,8 @@ def test_create_new_dokument_with_url(
 ):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateDokumentInput!) {
-        createDokument(data: $data) {
+    mutation m($data: CreateStandortDokumentInput!) {
+        createStandortDokument(data: $data) {
             dokument
             url
         }
@@ -2004,7 +2004,7 @@ def test_create_new_dokument_with_url(
         },
     )
 
-    assert result.data["createDokument"] == {
+    assert result.data["createStandortDokument"] == {
         "dokument": "",
         "url": "https://example.com/new-document.pdf",
     }
@@ -2013,8 +2013,8 @@ def test_create_new_dokument_with_url(
 def test_create_new_aufgabe(session: Session, run_query, as_bearbeiten_geschaefte):
     vflz = make_vflz(session, "Standort 1")
     mutation = """
-    mutation m($data: CreateAufgabeInput!) {
-        createAufgabe(data: $data) {
+    mutation m($data: CreateStandortAufgabeInput!) {
+        createStandortAufgabe(data: $data) {
             startDatum
             endDatum
             faelligkeitsDatum
@@ -2040,7 +2040,7 @@ def test_create_new_aufgabe(session: Session, run_query, as_bearbeiten_geschaeft
     }
 
     result = run_query(mutation, variables)
-    assert result.data["createAufgabe"] == {
+    assert result.data["createStandortAufgabe"] == {
         "startDatum": "2020-01-01",
         "endDatum": None,
         "notiz": "Notiz",
@@ -2070,8 +2070,8 @@ def test_create_new_aufgabe_with_task_id(
     session.flush()
 
     mutation = """
-    mutation m($data: CreateAufgabeInput!) {
-        createAufgabe(data: $data) {
+    mutation m($data: CreateStandortAufgabeInput!) {
+        createStandortAufgabe(data: $data) {
             taskId
             title
         }
@@ -2092,7 +2092,7 @@ def test_create_new_aufgabe_with_task_id(
     variables["data"]["taskId"] = str(workflow_node.wf_node_id)
     result = run_query(mutation, variables)
     new_node = session.get_one(
-        wf_models.TaskNode, result.data["createAufgabe"]["taskId"]
+        wf_models.TaskNode, result.data["createStandortAufgabe"]["taskId"]
     )
     assert new_node.parent is workflow_node
 
@@ -2100,7 +2100,7 @@ def test_create_new_aufgabe_with_task_id(
     variables["data"]["taskId"] = str(task_node.wf_node_id)
     result = run_query(mutation, variables)
     new_node = session.get_one(
-        wf_models.TaskNode, result.data["createAufgabe"]["taskId"]
+        wf_models.TaskNode, result.data["createStandortAufgabe"]["taskId"]
     )
     assert new_node.parent is workflow_node
 
@@ -2108,7 +2108,7 @@ def test_create_new_aufgabe_with_task_id(
     variables["data"]["taskId"] = str(document_node.wf_node_id)
     result = run_query(mutation, variables)
     new_node = session.get_one(
-        wf_models.TaskNode, result.data["createAufgabe"]["taskId"]
+        wf_models.TaskNode, result.data["createStandortAufgabe"]["taskId"]
     )
     assert new_node.parent is workflow_node
 
@@ -2129,8 +2129,8 @@ def test_create_new_document_with_task_id(
     session.flush()
 
     mutation = """
-    mutation m($data: CreateDokumentInput!) {
-        createDokument(data: $data) {
+    mutation m($data: CreateStandortDokumentInput!) {
+        createStandortDokument(data: $data) {
             taskId
             title
         }
@@ -2153,7 +2153,7 @@ def test_create_new_document_with_task_id(
     variables["data"]["taskId"] = str(workflow_node.wf_node_id)
     result = run_query(mutation, variables)
     new_node = session.get_one(
-        wf_models.DocumentNode, result.data["createDokument"]["taskId"]
+        wf_models.DocumentNode, result.data["createStandortDokument"]["taskId"]
     )
     assert new_node.parent is workflow_node
 
@@ -2161,7 +2161,7 @@ def test_create_new_document_with_task_id(
     variables["data"]["taskId"] = str(task_node.wf_node_id)
     result = run_query(mutation, variables)
     new_node = session.get_one(
-        wf_models.DocumentNode, result.data["createDokument"]["taskId"]
+        wf_models.DocumentNode, result.data["createStandortDokument"]["taskId"]
     )
     assert new_node.parent is task_node
 
@@ -2169,7 +2169,7 @@ def test_create_new_document_with_task_id(
     variables["data"]["taskId"] = str(document_node.wf_node_id)
     result = run_query(mutation, variables)
     new_node = session.get_one(
-        wf_models.DocumentNode, result.data["createDokument"]["taskId"]
+        wf_models.DocumentNode, result.data["createStandortDokument"]["taskId"]
     )
     assert new_node.parent is task_node
 
@@ -2190,8 +2190,8 @@ def test_create_new_notiz_with_task_id(
     session.flush()
 
     mutation = """
-    mutation m($data: CreateNotizInput!) {
-        createNotiz(data: $data) {
+    mutation m($data: CreateStandortNotizInput!) {
+        createStandortNotiz(data: $data) {
             taskId
             title
         }
@@ -2212,19 +2212,25 @@ def test_create_new_notiz_with_task_id(
     # Can create notiz under prozess
     variables["data"]["taskId"] = str(workflow_node.wf_node_id)
     result = run_query(mutation, variables)
-    new_node = session.get_one(wf_models.NoteNode, result.data["createNotiz"]["taskId"])
+    new_node = session.get_one(
+        wf_models.NoteNode, result.data["createStandortNotiz"]["taskId"]
+    )
     assert new_node.parent is workflow_node
 
     # Can create notiz under aufgabe
     variables["data"]["taskId"] = str(task_node.wf_node_id)
     result = run_query(mutation, variables)
-    new_node = session.get_one(wf_models.NoteNode, result.data["createNotiz"]["taskId"])
+    new_node = session.get_one(
+        wf_models.NoteNode, result.data["createStandortNotiz"]["taskId"]
+    )
     assert new_node.parent is task_node
 
     # Creating notiz under dokument puts it under parent aufgabe
     variables["data"]["taskId"] = str(document_node.wf_node_id)
     result = run_query(mutation, variables)
-    new_node = session.get_one(wf_models.NoteNode, result.data["createNotiz"]["taskId"])
+    new_node = session.get_one(
+        wf_models.NoteNode, result.data["createStandortNotiz"]["taskId"]
+    )
     assert new_node.parent is task_node
 
 
@@ -3646,7 +3652,9 @@ def test_delete_task_not_allowed_for_task_that_is_not_last_of_workflow(
           steps: []
           links: []
     """
-    workflow, _ = workflow_manager.load_workflow_from_file(StringIO(workflow_config))
+    workflow = workflow_manager.load_workflow_from_file(
+        StringIO(workflow_config)
+    ).workflow
 
     vflz = make_vflz(session, "My Site")
     wf_node = workflow.create_node(str(vflz.vflz_id))

@@ -44,7 +44,7 @@ type Aufgabe implements Task {
   vflz: Vflz!
   sachbearbeitung: [BeteiligterGeschaeft!]!
   sonstigeBeteiligte: [BeteiligterGeschaeft!]!
-  folgeschritte: [TaskOption!]!
+  folgeschritte: StepInfo!
 }
 
 union AufgabeWorkflowProblemGroup = Aufgabe | WorkflowProblemGroup
@@ -233,15 +233,6 @@ type CodeListEntry {
 
 union CodeListEntryProblemGroup = CodeListEntry | ProblemGroup
 
-input CreateAufgabeInput {
-  title: String!
-  startDatum: Date!
-  faelligkeitsDatum: Date!
-  vflzId: ID!
-  notiz: String
-  taskId: ID = null
-}
-
 input CreateCodeListEntryInput {
   cliId: ID!
   code: CodeInputType!
@@ -250,7 +241,60 @@ input CreateCodeListEntryInput {
   isActive: Boolean!
 }
 
-input CreateDokumentInput {
+input CreatePoolAufgabeInput {
+  title: String!
+  startDatum: Date!
+  faelligkeitsDatum: Date!
+  poolId: ID!
+  notiz: String
+}
+
+input CreatePoolDokumentInput {
+  title: String!
+  startDatum: Date!
+  poolId: ID!
+  dokument: String!
+  notiz: String!
+  kategorie: CodeInputType
+  oeffentlich: Boolean!
+  url: String = null
+}
+
+input CreatePoolInput {
+  bezeichnung: String!
+  bemerkungen: String
+}
+
+input CreatePoolNotizInput {
+  title: String!
+  startDatum: Date!
+  poolId: ID!
+  notiz: String!
+  kategorie: CodeInputType
+  oeffentlich: Boolean!
+  url: String = null
+}
+
+input CreateSavedSearchInput {
+  name: String!
+  query: String!
+  fields: [SearchField!]!
+  sortBy: [SortItemInput!]!
+  isGrouped: Boolean!
+  showOnDashboard: Boolean!
+  isShared: Boolean!
+}
+
+input CreateStandortAufgabeInput {
+  title: String!
+  startDatum: Date!
+  faelligkeitsDatum: Date!
+  vflzId: ID!
+  notiz: String
+  taskId: ID = null
+}
+
+input CreateStandortDokumentInput {
   title: String!
   startDatum: Date!
   vflzId: ID!
@@ -262,7 +306,7 @@ input CreateDokumentInput {
   url: String = null
 }
 
-input CreateNotizInput {
+input CreateStandortNotizInput {
   title: String!
   startDatum: Date!
   vflzId: ID!
@@ -271,21 +315,6 @@ input CreateNotizInput {
   kategorie: CodeInputType
   oeffentlich: Boolean!
   url: String = null
-}
-
-input CreatePoolInput {
-  bezeichnung: String!
-  bemerkungen: String
-}
-
-input CreateSavedSearchInput {
-  name: String!
-  query: String!
-  fields: [SearchField!]!
-  sortBy: [SortItemInput!]!
-  isGrouped: Boolean!
-  showOnDashboard: Boolean!
-  isShared: Boolean!
 }
 
 input CreateSubjektInput {
@@ -368,7 +397,7 @@ type Dokument implements Task {
   vflz: Vflz!
   sachbearbeitung: [BeteiligterGeschaeft!]!
   sonstigeBeteiligte: [BeteiligterGeschaeft!]!
-  folgeschritte: [TaskOption!]!
+  folgeschritte: StepInfo!
   dokument: String
   url: String
 }
@@ -512,7 +541,7 @@ type Formular implements Task {
   vflz: Vflz!
   sachbearbeitung: [BeteiligterGeschaeft!]!
   sonstigeBeteiligte: [BeteiligterGeschaeft!]!
-  folgeschritte: [TaskOption!]!
+  folgeschritte: StepInfo!
   felder: FormularFelder!
   eingaben: FormularEingaben!
 }
@@ -776,11 +805,16 @@ type Mutation {
   updateDokument(data: UpdateDokumentInput!): Dokument!
   updateNotiz(data: UpdateNotizInput!): Notiz!
   updateFormular(data: UpdateFormularInput!): FormularProblemGroup!
-  startProzess(data: StartProzessInput!): StartProzessResult!
-  startFolgeschritt(data: StartTaskInput!): StartTaskResult!
-  createNotiz(data: CreateNotizInput!): Notiz!
-  createDokument(data: CreateDokumentInput!): Dokument!
-  createAufgabe(data: CreateAufgabeInput!): Aufgabe!
+  startStandortProzess(data: StartStandortProzessInput!): StartStandortProzessResult!
+  startPoolProzess(data: StartPoolProzessInput!): StartPoolProzessResult!
+  startStandortFolgeschritt(data: StartStandortFolgeschrittInput!): StartStandortFolgeschrittResult!
+  startPoolFolgeschritt(data: StartPoolFolgeschrittInput!): StartPoolFolgeschrittResult!
+  createStandortNotiz(data: CreateStandortNotizInput!): Notiz!
+  createPoolNotiz(data: CreatePoolNotizInput!): [Notiz!]!
+  createStandortDokument(data: CreateStandortDokumentInput!): Dokument!
+  createPoolDokument(data: CreatePoolDokumentInput!): [Dokument!]!
+  createStandortAufgabe(data: CreateStandortAufgabeInput!): Aufgabe!
+  createPoolAufgabe(data: CreatePoolAufgabeInput!): [Aufgabe!]!
   deleteTask(taskId: ID!): ID!
   updateVflzBeteiligte(data: UpdateVflzBeteiligteInput!): VflzProblemGroup!
   createSavedSearch(data: CreateSavedSearchInput!): SavedSearchProblemGroup!
@@ -814,7 +848,7 @@ type Notiz implements Task {
   vflz: Vflz!
   sachbearbeitung: [BeteiligterGeschaeft!]!
   sonstigeBeteiligte: [BeteiligterGeschaeft!]!
-  folgeschritte: [TaskOption!]!
+  folgeschritte: StepInfo!
   url: String
 }
 
@@ -1009,6 +1043,7 @@ enum ProblemCodeEnum {
   EXISTS
   BUSY
   TASK_DELETE
+  UNAVAILABLE_FOLGESCHRITT
 }
 
 type ProblemGroup {
@@ -1035,7 +1070,7 @@ type Prozess implements Task {
   vflz: Vflz!
   sachbearbeitung: [BeteiligterGeschaeft!]!
   sonstigeBeteiligte: [BeteiligterGeschaeft!]!
-  folgeschritte: [TaskOption!]!
+  folgeschritte: StepInfo!
 }
 
 type ProzessGestartet implements EventInterface {
@@ -1063,7 +1098,7 @@ type Query {
   vflz(vflzId: ID!): Vflz!
   vflzByVflIds(vflIds: [ID!]!): [Vflz!]!
   pool(poolId: ID!): Pool!
-  pools(page: Int! = 1, perPage: Int! = 20, filterBezeichnung: String = null): PaginatedPoolResult!
+  pools(page: Int! = 1, perPage: Int! = 20, filterBezeichnung: String = null, vflzId: ID = null): PaginatedPoolResult!
   codeLists(cliIds: [ID!] = null, filter: String = null, lang: Language! = DE, page: Int! = 1, perPage: Int! = 20): PaginatedCodeListResult!
   mappingCodelisten: JSON!
   translations: TranslationTable!
@@ -1089,6 +1124,8 @@ type Query {
   reportConfigurations(context: ReportContext!): [ReportConfigurationType!]!
   geschaefte(filter: GeschaefteFilter = null, page: Int! = 1, perPage: Int! = 20, taskId: ID = null, asTree: Boolean! = true, sortBy: SortTasks! = StartDatum, reverse: Boolean! = false): PaginatedTaskResult!
   task(taskId: ID!): Task!
+  prozesse: [TaskOption!]!
+  validatePoolFolgeschritt(data: ValidatePoolFolgeschrittInput!, validPage: Int! = 1, validPerPage: Int! = 20, invalidPage: Int! = 1, invalidPerPage: Int! = 20): ValidatedPoolFolgeschrittData!
   savedSearches: [SavedSearch!]!
   searchExports(exportId: ID = null): [SearchExport!]!
   dashboardStatistic(stichtag: Date!): DashboardStatistic!
@@ -1512,27 +1549,51 @@ type StandortTypenStatistic {
   count: Int!
 }
 
-input StartProzessInput {
-  vflzId: ID!
+input StartPoolFolgeschrittInput {
+  poolId: ID!
+  optionId: ID!
+  taskId: ID!
+}
+
+type StartPoolFolgeschrittResult {
+  tasks: [Task!]!
+}
+
+input StartPoolProzessInput {
+  poolId: ID!
   optionId: ID!
 }
 
-type StartProzessResult {
-  prozess: Prozess!
+type StartPoolProzessResult {
+  prozesse: [Prozess!]!
 }
 
-input StartTaskInput {
+input StartStandortFolgeschrittInput {
   taskId: ID!
   optionId: ID!
 }
 
-type StartTaskResult {
+type StartStandortFolgeschrittResult {
   task: Task!
+}
+
+input StartStandortProzessInput {
+  vflzId: ID!
+  optionId: ID!
+}
+
+type StartStandortProzessResult {
+  prozess: Prozess!
 }
 
 type StatusPublikation {
   datPublizieren: Date
   belastet: Boolean
+}
+
+type StepInfo {
+  availableOptions: [TaskOption!]!
+  problems: [Problem!]!
 }
 
 type Subjekt {
@@ -1581,7 +1642,7 @@ interface Task {
   vflz: Vflz!
   sachbearbeitung: [BeteiligterGeschaeft!]!
   sonstigeBeteiligte: [BeteiligterGeschaeft!]!
-  folgeschritte: [TaskOption!]!
+  folgeschritte: StepInfo!
 }
 
 type TaskOption {
@@ -1949,6 +2010,11 @@ input ValidateCreateVflzInput {
   ktu: CodeInputType
 }
 
+input ValidatePoolFolgeschrittInput {
+  poolId: ID!
+  optionId: ID = null
+}
+
 type ValidatedCreateVflzData {
   combinedId: [String!]!
   gemeinde: [Gemeinde!]!
@@ -1962,6 +2028,11 @@ type ValidatedParzelle {
   nummerierungsbereich: String
   egrid: String
   gbNummer: String!
+}
+
+type ValidatedPoolFolgeschrittData {
+  validStandorte: PaginatedVflzResult!
+  invalidStandorte: PaginatedVflzResult!
 }
 
 type ValidatedVflzData {

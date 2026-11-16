@@ -24,12 +24,14 @@ function VflzItemSkeleton() {
 
 export default function VflzList({
   className = "",
+  clickable = true,
   isCombobox,
   items,
   link,
   noResults,
 }: {
   className?: string;
+  clickable?: boolean;
   isCombobox?: boolean;
   items?: VflzItemFragment[];
   link?: boolean;
@@ -37,7 +39,9 @@ export default function VflzList({
 }) {
   if (items?.length === 0) {
     return noResults ? (
-      <div className="text-gray-7 mb-3 px-3 text-sm">{noResults}</div>
+      <div className={`text-gray-7 mb-3 px-3 text-sm ${className}`}>
+        {noResults}
+      </div>
     ) : null;
   }
   return (
@@ -47,12 +51,15 @@ export default function VflzList({
           <Spinner className="w-8" />
         </div>
       )}
-      <div className="divide-gray-5 border-gray-5 cursor-pointer divide-y border-t">
+      <div
+        className={`divide-gray-5 border-gray-5 ${clickable ? "cursor-pointer" : ""} divide-y border-t`}
+      >
         {items ? (
           items.map((vflz) => {
             return (
               <VflzItem
                 className="py-2"
+                clickable={clickable}
                 isCombobox={isCombobox}
                 key={vflz.vflzId}
                 link={link}

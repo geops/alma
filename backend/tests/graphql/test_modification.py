@@ -246,7 +246,7 @@ def test_creating_vflz_only_writes_current_user_and_datetime_for_erfasser(
 def simple_workflow(workflow_manager) -> wf_models.Workflow:
     path = Path(__file__).parent / "workflows" / "simple.yml"
     with path.open() as f:
-        workflow, _ = workflow_manager.load_workflow_from_file(f)
+        workflow = workflow_manager.load_workflow_from_file(f).workflow
     return workflow
 
 

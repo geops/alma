@@ -6,7 +6,6 @@ import useSWR from "swr";
 
 import Button from "@/components/Button";
 import Form from "@/components/Form";
-import PlusIcon from "@/components/icons/PlusIcon";
 import ResetIcon from "@/components/icons/ResetIcon";
 import Input from "@/components/Input";
 import MultiComboBox from "@/components/MultiComboBox";
@@ -273,7 +272,6 @@ export default function Workflow({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isStartTaskDialogOpen, setIsStartTaskDialogOpen] = useState(false);
   const { getSetting, permissions, updateSetting } = useCurrentUser();
   const asTree = getSetting<boolean>("workflow.asTree", false);
   const reverse = getSetting<boolean>("workflow.reverse", true);
@@ -487,10 +485,14 @@ export default function Workflow({
       redirectTo(newTaskId);
       if (!newTaskId) {
         setPage(1);
+        setRequestedTaskId(undefined);
+        redirectTo();
+      } else if (newTaskId !== taskId) {
+        redirectTo(newTaskId);
       }
       void mutate(undefined, { revalidate: true });
     },
-    [mutate, redirectTo, setGeschaefte, setPage, setPages],
+    [mutate, redirectTo, setGeschaefte, setPage, setPages, taskId],
   );
 
   const containerRef = useInfiniteScroll(
@@ -540,19 +542,6 @@ export default function Workflow({
   }
   return (
     <>
-      {vflzId && data && "vflz" in data ? (
-        <StartTaskDialog
-          isOpen={isStartTaskDialogOpen}
-          onClose={() => {
-            return setIsStartTaskDialogOpen(false);
-          }}
-          options={data.vflz.prozesse}
-          reloadList={reloadList}
-          sortByTitle
-          title={t("workflow.startProzessTitle")}
-          vflzId={vflzId}
-        />
-      ) : null}
       <Form
         defaultValues={workflowFilterFormDefaultValues}
         model="Task"
@@ -687,16 +676,15 @@ export default function Workflow({
             }}
           />
         </div>
-        {vflzId && permissions.canEditProcess ? (
-          <Button
-            data-test="Workflow-startProzess"
-            onClick={() => {
-              setIsStartTaskDialogOpen(true);
-            }}
-          >
-            <PlusIcon />
-            <span className="ml-1.5">{t("workflow.startProzess")}</span>
-          </Button>
+        {permissions.canEditProcess ? (
+          <StartTaskDialog
+            forceStartProzess
+            options={data && "vflz" in data ? (data.vflz?.prozesse ?? []) : []}
+            optionsSource={data && "vflz" in data ? "provided" : "global"}
+            reloadList={reloadList}
+            sortByTitle
+            vflzId={data && "vflz" in data ? vflzId : undefined}
+          />
         ) : null}
       </div>
       <div className="flex gap-4">

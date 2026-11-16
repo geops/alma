@@ -37,7 +37,7 @@ dependencies = [
     "preview-generator",
     "openpyxl",
     "jsonschema",
-    "business-workflow-manager==1.3.0",
+    "business-workflow-manager",
     "pandas",
     "pydantic[email]"
 ]
