@@ -199,7 +199,7 @@ function VflzBeurteilung({
         getValues("begruendungBewertung.erfassungMutation"),
       ]}
     >
-      <ModelContext.Provider value="Beurteilung">
+      <ModelContext value="Beurteilung">
         <CodeListbox name="beurteilung.beurteilung" />
         <div className="grid grid-cols-2 gap-x-8 gap-y-5">
           <div className="bg-blue-1 rounded-lg p-2 text-xs">
@@ -217,10 +217,10 @@ function VflzBeurteilung({
             />
           </div>
         </div>
-      </ModelContext.Provider>
-      <ModelContext.Provider value="Vflz.begruendungBewertung">
+      </ModelContext>
+      <ModelContext value="Vflz.begruendungBewertung">
         <Textarea name="begruendungBewertung.bem" />
-      </ModelContext.Provider>
+      </ModelContext>
       <div className="relative">
         <Button
           className={`flex space-x-1.5 ${isEditLocked ? "" : "text-gray-5 bg-white"} absolute top-5 left-5`}
@@ -354,13 +354,13 @@ function VflzPrioUntersuchung() {
       )}
     >
       <div className="@container grid grid-cols-2 gap-x-8 gap-y-5">
-        <ModelContext.Provider value="Beurteilung">
+        <ModelContext value="Beurteilung">
           <CodeListbox name="beurteilung.prioUntersuch" />
-        </ModelContext.Provider>
+        </ModelContext>
         <div className="col-span-2">
-          <ModelContext.Provider value="Vflz.begruendungPrioUntersuchungsbedarf">
+          <ModelContext value="Vflz.begruendungPrioUntersuchungsbedarf">
             <Textarea name="begruendungPrioUntersuchungsbedarf.bem" />
-          </ModelContext.Provider>
+          </ModelContext>
         </div>
       </div>
     </Fieldset>
@@ -426,22 +426,22 @@ function VflzSanierungsziele() {
             <div className="@container grid grid-cols-2 gap-x-8 gap-y-5">
               <CodeListbox name={`sanierungsziele.${i1}.sanierungsziel`} />
               <div className="col-span-2">
-                <ModelContext.Provider value={`Sanierungsziel.bemerkung`}>
+                <ModelContext value={`Sanierungsziel.bemerkung`}>
                   <Textarea name={`sanierungsziele.${i1}.bemerkung.bem`} />
-                </ModelContext.Provider>
+                </ModelContext>
               </div>
             </div>
           );
         }}
       </FieldArray>
       <div className="@container grid grid-cols-2 gap-x-8 gap-y-5">
-        <ModelContext.Provider value="Beurteilung">
+        <ModelContext value="Beurteilung">
           <CodeListbox name="beurteilung.prioSanier" />
-        </ModelContext.Provider>
+        </ModelContext>
         <div className="col-span-2">
-          <ModelContext.Provider value="Vflz.begruendungPrioSanierungsbedarf">
+          <ModelContext value="Vflz.begruendungPrioSanierungsbedarf">
             <Textarea name="begruendungPrioSanierungsbedarf.bem" />
-          </ModelContext.Provider>
+          </ModelContext>
         </div>
       </div>
     </Fieldset>
@@ -535,9 +535,9 @@ function VflzMassnahmen() {
                 <DatePicker name={`massnahmen.${i1}.datMassnahme`} />
               </div>
               <div className="col-span-2">
-                <ModelContext.Provider value={`Massnahme.bemerkung`}>
+                <ModelContext value={`Massnahme.bemerkung`}>
                   <Textarea name={`massnahmen.${i1}.bemerkung.bem`} />
-                </ModelContext.Provider>
+                </ModelContext>
               </div>
             </div>
           );

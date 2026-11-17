@@ -25,12 +25,15 @@ function listboxSelect(selector: string, value: string) {
 }
 
 describe("Vflz Evaluation Page", () => {
+  let evaluationQueryAlias = "VflzEvaluation";
+
   beforeEach(() => {
+    evaluationQueryAlias = "VflzEvaluation";
     cy.intercept<{ query: string }>("POST", "/graphql", (req) => {
       if (req.body.query.includes("mutation CypressCreateVflz")) {
         req.alias = "createVflz";
       } else if (req.body.query.includes("query VflzEvaluation")) {
-        req.alias = "VflzEvaluation";
+        req.alias = evaluationQueryAlias;
       } else if (req.body.query.includes("mutation updateVflzEvaluation")) {
         req.alias = "updateVflzEvaluation";
       } else if (req.body.query.includes("query codeLists")) {
@@ -389,10 +392,23 @@ describe("Vflz Evaluation Page", () => {
         });
 
       /* shows dialog if form has unsaved changes (form is dirty) */
+      cy.then(() => {
+        evaluationQueryAlias = "ReloadVflzEvaluation";
+      });
       cy.reload();
-      cy.wait(["@VflzEvaluation"]);
+      cy.wait("@ReloadVflzEvaluation")
+        .its("response.body.data.vflz.begruendungBewertung.bem")
+        .should("equal", "Begründung Bewertung");
+      formFind("textarea[name='begruendungBewertung.bem']").should(
+        "have.value",
+        "Begründung Bewertung",
+      );
       formFind("button[type=submit]").should("be.disabled");
       formFind("textarea[name='begruendungBewertung.bem']").type("something");
+      formFind("textarea[name='begruendungBewertung.bem']").should(
+        "have.value",
+        "Begründung Bewertungsomething",
+      );
       formFind("button[type=submit]").should("not.be.disabled");
 
       cy.on("uncaught:exception", (error) => {

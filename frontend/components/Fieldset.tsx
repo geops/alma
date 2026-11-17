@@ -56,7 +56,7 @@ export default function AlmaFieldset({
     >
       <div className="flex items-start justify-between">
         {legend ? (
-          <Legend className="mb-3 scroll-mt-32 font-semibold" id={id}>
+          <Legend className="mb-3 scroll-mt-44 font-semibold" id={id}>
             {legend}
           </Legend>
         ) : null}

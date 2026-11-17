@@ -165,7 +165,9 @@ async def logout(
     """Logout user"""
     session = await run_sync(_get_oidc_session, db, request)
     if not session:  # already logged out
-        return RedirectResponse(url="/")
+        return RedirectResponse(
+            url="/", headers={"Clear-Site-Data": '"cache", "storage", "cookies"'}
+        )
 
     redirect_uri = request.base_url.replace(path="/")
     id_token = loads(session.token)["id_token"]
@@ -173,6 +175,7 @@ async def logout(
     return RedirectResponse(
         url=f"{sso.server_metadata['end_session_endpoint']}?post_logout_redirect_uri={redirect_uri}&id_token_hint={id_token}",
         status_code=302,
+        headers={"Clear-Site-Data": '"cache", "storage", "cookies"'},
     )
 
 

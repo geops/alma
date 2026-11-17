@@ -44,9 +44,9 @@ describe("ImportFileWidget component", () => {
     const dispatchStub = cy.stub();
     const onCloseStub = cy.stub();
     cy.mount(
-      <DispatchContext.Provider value={dispatchStub}>
+      <DispatchContext value={dispatchStub}>
         <ImportFileWidget onClose={onCloseStub} />
-      </DispatchContext.Provider>,
+      </DispatchContext>,
     );
     cy.get("button[data-test=ImportFileWidget-local]").click();
     cy.get("div[data-test=ImportFileWidget]")
@@ -64,9 +64,9 @@ describe("ImportFileWidget component", () => {
       fixture: "MapLayerTree/ImportFileWidget/test.kml",
     });
     cy.mount(
-      <DispatchContext.Provider value={dispatchStub}>
+      <DispatchContext value={dispatchStub}>
         <ImportFileWidget onClose={onCloseStub} />
-      </DispatchContext.Provider>,
+      </DispatchContext>,
     );
     cy.get("div[data-test=ImportFileWidget]")
       .find("input[name=url]")
@@ -80,9 +80,9 @@ describe("ImportFileWidget component", () => {
     const dispatchStub = cy.stub();
     const onCloseStub = cy.stub();
     cy.mount(
-      <DispatchContext.Provider value={dispatchStub}>
+      <DispatchContext value={dispatchStub}>
         <ImportFileWidget onClose={onCloseStub} />
-      </DispatchContext.Provider>,
+      </DispatchContext>,
     );
     cy.get("button[data-test=ImportFileWidget-local]").click();
     cy.get("div[data-test=ImportFileWidget]")
@@ -100,9 +100,9 @@ describe("ImportFileWidget component", () => {
       fixture: "MapLayerTree/ImportFileWidget/shapefiles.zip",
     });
     cy.mount(
-      <DispatchContext.Provider value={dispatchStub}>
+      <DispatchContext value={dispatchStub}>
         <ImportFileWidget onClose={onCloseStub} />
-      </DispatchContext.Provider>,
+      </DispatchContext>,
     );
     cy.get("div[data-test=ImportFileWidget]")
       .find("input[name=url]")
@@ -121,9 +121,9 @@ describe("ImportFileWidget component", () => {
       statusCode: 404,
     });
     cy.mount(
-      <DispatchContext.Provider value={dispatchStub}>
+      <DispatchContext value={dispatchStub}>
         <ImportFileWidget onClose={onCloseStub} />
-      </DispatchContext.Provider>,
+      </DispatchContext>,
     );
     // test help status
     cy.get("[data-test=ImportFileWidget-help]").should("be.visible");

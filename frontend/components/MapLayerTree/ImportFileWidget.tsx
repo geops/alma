@@ -4,7 +4,7 @@ import KML from "ol/format/KML";
 import GroupLayer from "ol/layer/Group";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import { useContext, useState } from "react";
+import { use, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import shp, { type FeatureCollectionWithFilename } from "shpjs";
 
@@ -123,7 +123,7 @@ type ImportStatus =
   | "loading";
 
 export default function ImportFileWidget({ onClose }: { onClose: () => void }) {
-  const dispatch = useContext(DispatchContext);
+  const dispatch = use(DispatchContext);
   const methods = useForm<{
     file: FileList | null;
     url: null | string;
@@ -156,17 +156,17 @@ export default function ImportFileWidget({ onClose }: { onClose: () => void }) {
             </TabList>
             <TabPanels className="my-2">
               <TabPanel>
-                <ModelContext.Provider value="MapLayerTree">
+                <ModelContext value="MapLayerTree">
                   <Input
                     name="url"
                     placeholder={t("MapLayerTree.importFile.urlPlaceholder")}
                   />
-                </ModelContext.Provider>
+                </ModelContext>
               </TabPanel>
               <TabPanel>
-                <ModelContext.Provider value="MapLayerTree">
+                <ModelContext value="MapLayerTree">
                   <Input name="file" type="file" />
-                </ModelContext.Provider>
+                </ModelContext>
               </TabPanel>
             </TabPanels>
           </TabGroup>

@@ -1,5 +1,12 @@
 import { gql, GraphQLClient } from "graphql-request";
 
+import type {
+  StartPoolProzessMutation,
+  TaskQuery,
+  TaskTargetPoolFolgeschrittValidQuery,
+  TaskTargetPoolSearchQuery,
+} from "@/lib/graphql";
+
 describe("Workflow page", () => {
   beforeEach(() => {
     cy.on("uncaught:exception", (err) => {
@@ -61,6 +68,14 @@ describe("Workflow page", () => {
   });
 
   it("supports pool-wise and standort-wise next-task creation for Erstbeurteilung", () => {
+    const standortPrefix = `Pool-Workflow-${Date.now()}`;
+    const poolName = `Pool Test ${standortPrefix}`;
+    const createdVflz: { bezeichnung: string; vflzId: string }[] = [];
+    let createdTaskIds: string[] = [];
+    let createdPoolId = "";
+    let selectedTaskId: string | undefined;
+    let taskSelection = 0;
+
     const createPoolMutation = gql`
       mutation e2eCreatePool($data: CreatePoolInput!) {
         createPool(data: $data) {
@@ -117,30 +132,25 @@ describe("Workflow page", () => {
         .contains("[role=option]", "Erstbeurteilung")
         .click({ force: true });
     };
-    const goToPoolTarget = (poolName: string) => {
+    const goToPoolTarget = (targetPoolName: string) => {
       assertDialogIsVisible()
         .find("button[data-test=Workflow-targetPool]")
         .click({ force: true });
       assertDialogIsVisible()
         .find("input[data-test=Workflow-poolSearchInput]")
-        .first()
-        .should("exist")
-        .click({ force: true });
-      assertDialogIsVisible()
-        .find("input[data-test=Workflow-poolSearchInput]")
-        .first()
-        .clear({ force: true });
-      assertDialogIsVisible()
-        .find("input[data-test=Workflow-poolSearchInput]")
-        .first()
-        .type(poolName, { force: true });
-      cy.contains("[role=option]:visible", poolName)
+        .should("have.length", 1)
         .should("be.visible")
-        .should("exist")
-        .click({ force: true });
+        .clear();
+      visibleDialog()
+        .find("input[data-test=Workflow-poolSearchInput]")
+        .type(targetPoolName);
+      // Repeated searches can use SWR's cache without a new request.
+      cy.contains("[role=option]:visible", targetPoolName, { timeout: 20000 })
+        .should("be.visible")
+        .click();
       visibleDialog()
         .find("button[data-test=Workflow-selectedPool]")
-        .should("exist");
+        .should("contain", targetPoolName);
     };
     const openFloatingStartTaskDialog = () => {
       const openMenuAndStartTask = () => {
@@ -197,41 +207,52 @@ describe("Workflow page", () => {
     };
     const workflowItems = () =>
       cy.get("div[data-test^=Workflow-item]", { timeout: 20000 });
-    const assertPoolCountsAndOpenInvalid = (valid: number, invalid: number) => {
-      cy.wait("@taskTargetPoolFolgeschrittValid").then(({ response }) => {
-        const body = response?.body as
-          | {
-              data?: {
-                validatePoolFolgeschritt?: {
-                  invalidStandorte?: { numResultsTotal?: number };
-                  validStandorte?: { numResultsTotal?: number };
-                };
-              };
-            }
-          | undefined;
-        const result = body?.data?.validatePoolFolgeschritt;
-        expect(result?.validStandorte?.numResultsTotal).to.equal(valid);
-        expect(result?.invalidStandorte?.numResultsTotal).to.equal(invalid);
+    const openCreatedTask = (index: number) => {
+      cy.then(() => {
+        const taskId = createdTaskIds[index];
+        expect(taskId, "task created by this test").to.be.a("string");
+        selectedTaskId = taskId;
+        taskSelection += 1;
+        cy.visit(`/workflow?id=${taskId}`);
+        cy.wait(`@SelectedTask-${taskSelection}`)
+          .its("response.body.data.task")
+          .should((task: TaskQuery["task"]) => {
+            expect(task.taskId).to.equal(taskId);
+          });
+        cy.get("div[data-test=Workflow-taskTitle] textarea", {
+          timeout: 20000,
+        }).should("have.value", "Erstbeurteilung Inhaberorientierung");
       });
+    };
+    const assertPoolCountsAndOpenInvalid = (valid: number, invalid: number) => {
+      cy.wait("@taskTargetPoolFolgeschrittValid")
+        .its("response.body.data.validatePoolFolgeschritt")
+        .should(
+          (
+            result: TaskTargetPoolFolgeschrittValidQuery["validatePoolFolgeschritt"],
+          ) => {
+            expect(result.validStandorte.numResultsTotal).to.equal(valid);
+            expect(result.invalidStandorte.numResultsTotal).to.equal(invalid);
+          },
+        );
 
       if (invalid > 0) {
         visibleDialog().find(".bg-gray-2 button").eq(1).click({ force: true });
       }
     };
 
-    const standortPrefix = `Pool-Workflow-${Date.now()}`;
-    const firstStandortBezeichnung = `${standortPrefix}-1`;
-    const poolName = `Pool Test ${standortPrefix}`;
-    const createdVflz: { bezeichnung: string; vflzId: string }[] = [];
-    let createdPoolId = "";
-
-    cy.intercept<{ query: string }>("POST", "/graphql", (req) => {
+    cy.intercept<{
+      query: string;
+      variables?: { filterBezeichnung?: string; taskId?: string };
+    }>("POST", "/graphql", (req) => {
       if (req.body.query.includes("query GlobalWorkflow")) {
         req.alias = "GlobalWorkflow";
       } else if (req.body.query.includes("query startTaskDialogProzesse")) {
         req.alias = "StartTaskDialogProzesse";
       } else if (req.body.query.includes("query taskTargetPoolSearch")) {
-        req.alias = "taskTargetPoolSearch";
+        if (req.body.variables?.filterBezeichnung === poolName) {
+          req.alias = "taskTargetPoolSearch";
+        }
       } else if (
         req.body.query.includes("query taskTargetPoolFolgeschrittValid")
       ) {
@@ -248,10 +269,11 @@ describe("Workflow page", () => {
         req.body.query.includes("mutation startStandortFolgeschritt")
       ) {
         req.alias = "startStandortFolgeschritt";
-      } else if (req.body.query.includes("query taskTargetStandortSearch")) {
-        req.alias = "taskTargetStandortSearch";
-      } else if (req.body.query.includes("query task")) {
-        req.alias = "Task";
+      } else if (req.body.query.includes("query task(")) {
+        req.alias =
+          selectedTaskId && req.body.variables?.taskId === selectedTaskId
+            ? `SelectedTask-${taskSelection}`
+            : "Task";
       }
     });
 
@@ -307,14 +329,29 @@ describe("Workflow page", () => {
       .find("[data-test=Workflow-startProzess]")
       .click({ force: true });
     goToPoolTarget(poolName);
+    cy.wait("@taskTargetPoolSearch")
+      .its("response.body.data.pools.results")
+      .should((pools: TaskTargetPoolSearchQuery["pools"]["results"]) => {
+        expect(pools.map((pool) => pool.poolId)).to.include(createdPoolId);
+      });
     assertPoolCountsAndOpenInvalid(5, 0);
     visibleDialog()
       .find("button[data-test=Workflow-createTask]")
       .should("be.enabled");
     clickCreateInTargetStep();
-    cy.wait("@startPoolProzess", { timeout: 20000 });
+    cy.wait("@startPoolProzess", { timeout: 20000 })
+      .its("response.body.data.startPoolProzess.prozesse")
+      .should("have.length", 5)
+      .then(
+        (
+          prozesse: StartPoolProzessMutation["startPoolProzess"]["prozesse"],
+        ) => {
+          createdTaskIds = prozesse.map((prozess) => prozess.taskId);
+          expect(new Set(createdTaskIds).size).to.equal(5);
+        },
+      );
     cy.wait(["@GlobalWorkflow", "@Task"]);
-    cy.get("div[data-test=Workflow-taskTitle] input", {
+    cy.get("div[data-test=Workflow-taskTitle] textarea", {
       timeout: 20000,
     }).should("have.value", "Erstbeurteilung Inhaberorientierung");
     workflowItems().contains("Erstbeurteilung Inhaberorientierung");
@@ -334,11 +371,7 @@ describe("Workflow page", () => {
 
     // 3) Open via floating menu, verify pool-wise valid=5 (do not create),
     // switch to Standort and create one task.
-    workflowItems()
-      .filter(":contains('Erstbeurteilung Inhaberorientierung')")
-      .first()
-      .click({ force: true });
-    cy.wait("@Task");
+    openCreatedTask(0);
     openFloatingStartTaskDialog();
     visibleDialog()
       .find("[data-test=Workflow-select-button]")
@@ -357,48 +390,24 @@ describe("Workflow page", () => {
     visibleDialog()
       .find("button[data-test=Workflow-targetStandort]")
       .click({ force: true });
-    visibleDialog().then(($dialog) => {
-      const hasSelectedStandortChip =
-        $dialog.find("button[data-test=Workflow-selectedStandort]").length > 0;
-      const hasSelectedVflzItem =
-        $dialog.find("[data-test=VflzItem]").length > 0;
-
-      if (hasSelectedStandortChip || hasSelectedVflzItem) {
-        return;
-      }
-
-      cy.wrap($dialog)
-        .find("input[data-test=Workflow-standortSearchInput]")
-        .first()
-        .should("exist")
-        .click({ force: true });
-      visibleDialog()
-        .find("input[data-test=Workflow-standortSearchInput]")
-        .first()
-        .clear({ force: true });
-      visibleDialog()
-        .find("input[data-test=Workflow-standortSearchInput]")
-        .first()
-        .type(firstStandortBezeichnung, { force: true });
-      cy.wait("@taskTargetStandortSearch");
-      cy.contains("[role=option]:visible", firstStandortBezeichnung).click({
-        force: true,
-      });
-    });
+    visibleDialog()
+      .find("[data-test=VflzItem]")
+      .should("have.length", 1)
+      .and("contain", standortPrefix);
     visibleDialog()
       .find("button[data-test=Workflow-createTask]")
       .should("be.enabled");
     clickCreateInTargetStep();
-    cy.wait("@startStandortFolgeschritt");
+    cy.wait("@startStandortFolgeschritt")
+      .its("request.body.variables.data.taskId")
+      .should((taskId: string) => {
+        expect(taskId).to.equal(createdTaskIds[0]);
+      });
     cy.wait(["@GlobalWorkflow", "@Task"]);
 
     // 4) Open another Erstbeurteilung task and create pool-wise,
     // now previous standort is invalid -> valid=4, invalid=1.
-    workflowItems()
-      .filter(":contains('Erstbeurteilung Inhaberorientierung')")
-      .eq(1)
-      .click({ force: true });
-    cy.wait("@Task");
+    openCreatedTask(1);
     openFloatingStartTaskDialog();
     visibleDialog()
       .find("[data-test=Workflow-select-button]")
@@ -418,7 +427,11 @@ describe("Workflow page", () => {
       .find("button[data-test=Workflow-createTask]")
       .should("be.enabled");
     clickCreateInTargetStep();
-    cy.wait("@startPoolFolgeschritt", { timeout: 20000 });
+    cy.wait("@startPoolFolgeschritt", { timeout: 20000 })
+      .its("request.body.variables.data.taskId")
+      .should((taskId: string) => {
+        expect(taskId).to.equal(createdTaskIds[1]);
+      });
     cy.wait(["@GlobalWorkflow", "@Task"]);
   });
 });

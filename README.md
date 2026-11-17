@@ -104,7 +104,7 @@ Running locally:
 | db         | `PG_TLS_CERT_FILE`, `PG_TLS_KEY_FILE` (required); `PG_TLS_RUNTIME_DIR` (set in the image), `POSTGRES_HOST_AUTH_METHOD` |
 | libpq clients | `PGSSLMODE`, `PGSSLROOTCERT` |
 | backend    | `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GDAL_CURL_CA_BUNDLE` (combined bundle), `GUNICORN_CMD_ARGS=--certfile=... --keyfile=...` (gunicorn of the TLS image) / `UVICORN_SSL_CERTFILE`, `UVICORN_SSL_KEYFILE` (local dev server), `OIDC_BASE_URL`, `MONITORING_*_URL` |
-| keycloak   | (`KC_HTTP_ENABLED=false` baked in) `KC_HTTPS_PORT`, `KC_HTTPS_CERTIFICATE_FILE`, `KC_HTTPS_CERTIFICATE_KEY_FILE`, `KC_HTTPS_PROTOCOLS`, `KC_DB_URL_PROPERTIES`, `KC_HOSTNAME` |
+| keycloak   | `KC_HTTP_ENABLED=false`, `KC_HTTPS_PORT=8080`, `KC_HTTPS_CERTIFICATE_FILE`, `KC_HTTPS_CERTIFICATE_KEY_FILE`, `KC_HTTPS_PROTOCOLS`, `KC_DB_URL_PROPERTIES`, `KC_HOSTNAME` |
 | db_migrate | `FLYWAY_URL=…?sslmode=require` |
 | mapserver  | `MAPSERVER_TLS_CERT_FILE`, `MAPSERVER_TLS_KEY_FILE`, `MAPSERVER_TLS_CA_FILE`, `MAPSERVER_URL` |
 | nginx      | none – certificates are mounted at the fixed paths `/certs/tls.crt`, `/certs/tls.key`, `/certs/ca.crt` (hardcoded in the config) |

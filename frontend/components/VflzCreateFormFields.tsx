@@ -43,9 +43,9 @@ function VflzCreateFormFields({
         <Message>{message}</Message>
       </div>
       <Fieldset className="grid grid-cols-3 gap-5">
-        <ModelContext.Provider value="Vflz.gemeinde">
+        <ModelContext value="Vflz.gemeinde">
           <Input disabled name="gemeinde.displayValue" required />
-        </ModelContext.Provider>
+        </ModelContext>
         <Input
           data-test="VflzCreateFormFields-kanton"
           disabled

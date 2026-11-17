@@ -53,7 +53,7 @@ describe("SearchResultsTable Component", () => {
 
     it("renders", () => {
       cy.mount(
-        <SearchParamsContext.Provider value={new URLSearchParams()}>
+        <SearchParamsContext value={new URLSearchParams()}>
           <Form model="foo">
             <SearchResultsTable
               fields={[
@@ -67,7 +67,7 @@ describe("SearchResultsTable Component", () => {
               filters={{ query: "" }}
             />
           </Form>
-        </SearchParamsContext.Provider>,
+        </SearchParamsContext>,
         mountOptions,
       );
 
@@ -77,7 +77,7 @@ describe("SearchResultsTable Component", () => {
 
     it("group results by Standort", () => {
       cy.mount(
-        <SearchParamsContext.Provider value={new URLSearchParams()}>
+        <SearchParamsContext value={new URLSearchParams()}>
           <Form model="foo">
             <SearchResultsTable
               fields={[
@@ -93,7 +93,7 @@ describe("SearchResultsTable Component", () => {
               isGrouped
             />
           </Form>
-        </SearchParamsContext.Provider>,
+        </SearchParamsContext>,
         mountOptions,
       );
       cy.get("table").should("exist");
@@ -128,11 +128,11 @@ describe("SearchResultsTable Component", () => {
 
     it("displays no results message when no data", function () {
       cy.mount(
-        <SearchParamsContext.Provider value={new URLSearchParams()}>
+        <SearchParamsContext value={new URLSearchParams()}>
           <Form model="foo">
             <SearchResultsTable filters={{ query: "" }} />
           </Form>
-        </SearchParamsContext.Provider>,
+        </SearchParamsContext>,
         mountOptions,
       );
 

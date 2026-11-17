@@ -15,7 +15,6 @@ import Dialog from "@/components/Dialog";
 import Form from "@/components/Form";
 import PlusIcon from "@/components/icons/PlusIcon";
 import TrashIcon from "@/components/icons/TrashIcon";
-import Input from "@/components/Input";
 import Listbox from "@/components/Listbox";
 import Message from "@/components/Message";
 import Textarea from "@/components/Textarea";
@@ -654,7 +653,13 @@ function TaskForm<T extends Mutation>({
         ) : (
           <TaskTriggers items={values?.triggers} />
         )}
-        <Input data-test="Workflow-taskTitle" name="title" />
+        <Textarea
+          className="max-h-none w-full resize-none"
+          data-test="Workflow-taskTitle"
+          name="title"
+          rows={1}
+          singleLine
+        />
         {showKategorieFields ? (
           <>
             <CodeListbox name="kategorie" />

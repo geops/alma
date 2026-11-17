@@ -97,7 +97,7 @@ export default function FieldArray<T>({
 
   if (level === 1 && getTitle) {
     return (
-      <ModelContext.Provider value={model}>
+      <ModelContext value={model}>
         <div className="space-y-4" {...props}>
           {fields.map((field, index) => {
             return (
@@ -145,11 +145,11 @@ export default function FieldArray<T>({
           })}
           {hideAddButton ? null : addButton}
         </div>
-      </ModelContext.Provider>
+      </ModelContext>
     );
   }
   return (
-    <ModelContext.Provider value={model}>
+    <ModelContext value={model}>
       <div className={simple ? "" : "space-y-4"} {...props}>
         {fields.map((field, index) => {
           return (
@@ -182,6 +182,6 @@ export default function FieldArray<T>({
         })}
         {hideAddButton ? null : addButton}
       </div>
-    </ModelContext.Provider>
+    </ModelContext>
   );
 }

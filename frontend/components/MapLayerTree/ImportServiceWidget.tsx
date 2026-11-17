@@ -7,7 +7,7 @@ import ImageLayer from "ol/layer/Image";
 import TileLayer from "ol/layer/Tile";
 import ImageWMS from "ol/source/ImageWMS";
 import WMTS from "ol/source/WMTS";
-import { useContext, useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import Button from "@/components/Button";
@@ -216,7 +216,7 @@ export default function ImportServiceWidget({
 }: {
   onClose: () => void;
 }) {
-  const dispatch = useContext(DispatchContext);
+  const dispatch = use(DispatchContext);
   const methods = useForm<{ layers: Record<string, boolean>; url: string }>();
   const { t } = useI18n();
   const [urls, updateUrls] = useSetting<string[]>("ui.map.import.urls", []);
@@ -342,13 +342,13 @@ export default function ImportServiceWidget({
     >
       <FormProvider {...methods}>
         <div className="rounded-lg bg-white p-2">
-          <ModelContext.Provider value="MapLayerTree">
+          <ModelContext value="MapLayerTree">
             <Input
               name="url"
               onChange={handleURLChange}
               placeholder={t("MapLayerTree.importService.urlPlaceholder")}
             />
-          </ModelContext.Provider>
+          </ModelContext>
           <div className="border-gray-4 max-h-[calc(100vh-26rem)] overflow-x-hidden overflow-y-scroll rounded-lg border shadow-lg">
             {serviceResult === "fetchFailed" ||
             serviceResult === "invalidResponse" ||

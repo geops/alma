@@ -1,3 +1,5 @@
+import { clearCache } from "@camptocamp/ogc-client";
+
 import ImportServiceWidget from "./ImportServiceWidget";
 
 const services = [
@@ -31,24 +33,33 @@ const services = [
 
 describe("ImportServiceWidget component", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/graphql", (req) => {
-      if (req.body.query?.includes("mutation updateInstanceSetting")) {
+    cy.then(clearCache);
+    cy.intercept<{ query?: string }>("POST", "/graphql", (req) => {
+      if (req.body.query?.includes("query useSetting")) {
+        req.reply({ data: { instanceSettings: [] } });
+      } else if (req.body.query?.includes("mutation UpdateInstanceSetting")) {
         req.alias = "updateInstanceSetting";
         req.reply({ data: {} });
       }
     });
   });
 
-  it("parses OGC services", () => {
-    cy.mount(<ImportServiceWidget onClose={cy.stub()} />);
-    services.forEach((service) => {
-      cy.get("input[name=url]").clear();
-      cy.intercept("GET", service.url, { fixture: service.fixture }).as(
-        "getCapabilities",
-      );
+  services.forEach((service) => {
+    it(`parses OGC service ${service.url}`, () => {
+      cy.clock();
+      const url = new URL(service.url);
+      // The OGC client normalizes query parameter order and casing.
+      cy.intercept(
+        { hostname: url.hostname, method: "GET", pathname: url.pathname },
+        { fixture: service.fixture },
+      ).as("getCapabilities");
+      cy.mount(<ImportServiceWidget onClose={cy.stub()} />);
       cy.get("input[name=url]").type(service.url);
-      cy.wait("@getCapabilities");
+      cy.tick(300);
+      // Both service detection and OGC parsing must use the fixture.
+      cy.wait(["@getCapabilities", "@getCapabilities"]);
       cy.contains("label", service.firstItem);
+      cy.wait("@updateInstanceSetting");
     });
   });
 });

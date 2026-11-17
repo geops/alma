@@ -1,3 +1,8 @@
+## Release 1.6.19
+
+- Make title field grow with title length
+- Add HTTP Security Headers.
+
 ## Release 1.6.18
 
 - Update to Version 1.6.1

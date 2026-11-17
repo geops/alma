@@ -2,6 +2,7 @@ import contextlib
 import mimetypes
 import os
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from logging import getLogger
 from pathlib import Path
@@ -69,6 +70,21 @@ logger = getLogger(__name__)
 
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def no_cache_sensitive_responses(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Prevent browsers and proxies from caching sensitive responses."""
+    response = await call_next(request)
+    if request.url.path == "/graphql":
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 oidc.init_app(app)
 graphql.init_app(app)
 

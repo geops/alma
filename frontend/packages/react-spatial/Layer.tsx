@@ -22,7 +22,5 @@ export default function Layer({ children, layer }: LayerProps) {
     };
   }, [layer, olMap]);
 
-  return (
-    <LayerContext.Provider value={layer}>{children}</LayerContext.Provider>
-  );
+  return <LayerContext value={layer}>{children}</LayerContext>;
 }

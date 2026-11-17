@@ -423,6 +423,9 @@ function VflzLayout({
         return observer.unobserve(headerElement);
       };
     }
+    return () => {
+      return observer.disconnect();
+    };
   }, [headerElement]);
 
   useEffect(() => {

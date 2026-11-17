@@ -176,10 +176,10 @@ function SimpleSearchForm({
     <div className="relative flex justify-between gap-2 pb-4.5">
       <div className="flex w-full items-center gap-2">
         <SimpleSearchTextInput />
-        <ModelContext.Provider value="Vflz">
+        <ModelContext value="Vflz">
           <CodeMultiComboBox data-test="vftypFilter" name="vftyp" />
-        </ModelContext.Provider>
-        <ModelContext.Provider value="Vflz">
+        </ModelContext>
+        <ModelContext value="Vflz">
           <MultiComboBox
             data-test="gemeindeFilter"
             name="hGemId"
@@ -190,8 +190,8 @@ function SimpleSearchForm({
               };
             })}
           />
-        </ModelContext.Provider>
-        <ModelContext.Provider value="Beurteilung">
+        </ModelContext>
+        <ModelContext value="Beurteilung">
           <CodeMultiComboBox
             categories={[
               {
@@ -219,14 +219,14 @@ function SimpleSearchForm({
             name="beurteilung.beurteilung"
             sortByValue={false}
           />
-        </ModelContext.Provider>
+        </ModelContext>
         <div
           className="border-gray-5 rounded-lg border px-3.5 py-2"
           data-test="publiziertFilter"
         >
-          <ModelContext.Provider value="Search">
+          <ModelContext value="Search">
             <Checkbox name="publiziert" />
-          </ModelContext.Provider>
+          </ModelContext>
         </div>
       </div>
       <Button

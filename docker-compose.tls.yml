@@ -12,6 +12,11 @@ services:
     build:
       target: final-tls
 
+  keycloak:
+    environment:
+      KC_HTTP_ENABLED: "false"
+      KC_HTTPS_PORT: "8080"
+
   nginx:
     image: registry.geops.com/geops/alma/alma-nginx:${TAG:-latest}
     build:

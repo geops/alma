@@ -1,7 +1,7 @@
-import { createContext, useContext } from "react";
+import { createContext, use } from "react";
 
 export const ModelContext = createContext("");
 
 export function useModelContext() {
-  return useContext(ModelContext);
+  return use(ModelContext);
 }

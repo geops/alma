@@ -386,12 +386,12 @@ function SubjektDialog({ onClose, subjId }: SubjektDialogProps) {
               <CodeCheckbox name="kategorien" />
             </div>
             <div className="grid auto-rows-min grid-cols-1 gap-4">
-              <ModelContext.Provider value="Kontakt">
+              <ModelContext value="Kontakt">
                 <SubjektKontakte />
-              </ModelContext.Provider>
-              <ModelContext.Provider value="Subjekt.bemerkung">
+              </ModelContext>
+              <ModelContext value="Subjekt.bemerkung">
                 <Textarea name="bemerkung.bem" />
-              </ModelContext.Provider>
+              </ModelContext>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-6">

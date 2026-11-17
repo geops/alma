@@ -112,9 +112,9 @@ function VflzBasedata({
         <CodeListbox name="ktu" />
         <Input name="flurname" />
         <Input name="strasse" />
-        <ModelContext.Provider value="Vflz.gemeinde">
+        <ModelContext value="Vflz.gemeinde">
           <Input disabled name="gemeinde.displayValue" />
-        </ModelContext.Provider>
+        </ModelContext>
         <div className="grid grid-cols-2 gap-x-4 @lg:grid-cols-4">
           <Input name="postleitzahl" />
           <Input className="@lg:col-span-3" name="ort" />
@@ -138,7 +138,7 @@ function VflzBasedata({
           {t("vflz.data.geodata.messageEnd")}
         </Message>
         <div className="grid grid-cols-4 gap-x-8">
-          <ModelContext.Provider value="Vflz.zentroid.coordinates">
+          <ModelContext value="Vflz.zentroid.coordinates">
             <Input
               data-test="vflzDataFormEast"
               disabled
@@ -152,7 +152,7 @@ function VflzBasedata({
               value={round10m(getValues("zentroid.coordinates.1"))}
             />
             <Input disabled name="zentroid.coordinates.2" suffix="m" />
-          </ModelContext.Provider>
+          </ModelContext>
           <Input disabled name="flaeche" suffix="m²" />
         </div>
       </div>
@@ -165,18 +165,18 @@ function VflzBasedata({
         />
         <Listbox name="lang" options={langOptions} />
       </div>
-      <ModelContext.Provider value="Vflz.bemerkungStandort">
+      <ModelContext value="Vflz.bemerkungStandort">
         <Textarea
           name="bemerkungStandort.bem"
           placeholder={t("vflz.bemerkungStandortPlaceholder")}
         />
-      </ModelContext.Provider>
-      <ModelContext.Provider value="Vflz.bemerkungDatenimport">
+      </ModelContext>
+      <ModelContext value="Vflz.bemerkungDatenimport">
         <Textarea
           name="bemerkungDatenimport.bem"
           placeholder={t("vflz.bemerkungDatenimportPlaceholder")}
         />
-      </ModelContext.Provider>
+      </ModelContext>
       {getValues("vftypEnum") === StandortTyp.Ablagerung ? (
         <div className="space-y-4">
           <h3 className="font-semibold">{t(getValues("vftyp"))}</h3>
@@ -389,18 +389,18 @@ function VflzAblagerungen() {
                   );
                 }}
               </FieldArray>
-              <ModelContext.Provider value="Ablagerung.bemerkung">
+              <ModelContext value="Ablagerung.bemerkung">
                 <Textarea
                   name={`ablagerungen.${i1}.bemerkung.bem`}
                   placeholder={t("ablagerung.bemerkungPlaceholder")}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value="Ablagerung.bemerkungDatenimport">
+              </ModelContext>
+              <ModelContext value="Ablagerung.bemerkungDatenimport">
                 <Textarea
                   name={`ablagerungen.${i1}.bemerkungDatenimport.bem`}
                   placeholder={t("ablagerung.bemerkungDatenimportPlaceholder")}
                 />
-              </ModelContext.Provider>
+              </ModelContext>
             </>
           );
         }}
@@ -654,7 +654,7 @@ function VflzBetriebe({
                 <CodeListbox name={`${name}.${i1}.untersuchungsStand`} />
                 <CodeListbox name={`${name}.${i1}.beurteilung`} />
               </div>
-              <ModelContext.Provider value={`${model}.bemerkung`}>
+              <ModelContext value={`${model}.bemerkung`}>
                 <Textarea
                   name={`${name}.${i1}.bemerkung.bem`}
                   placeholder={t(
@@ -663,8 +663,8 @@ function VflzBetriebe({
                       : "schiessanlage.bemerkungPlaceholder",
                   )}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value={`${model}.bemerkungDatenimport`}>
+              </ModelContext>
+              <ModelContext value={`${model}.bemerkungDatenimport`}>
                 <Textarea
                   name={`${name}.${i1}.bemerkungDatenimport.bem`}
                   placeholder={t(
@@ -673,8 +673,8 @@ function VflzBetriebe({
                       : "schiessanlage.bemerkungDatenimportPlaceholder",
                   )}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value={`${model}.begruendungBewertung`}>
+              </ModelContext>
+              <ModelContext value={`${model}.begruendungBewertung`}>
                 <Textarea
                   name={`${name}.${i1}.begruendungBewertung.bem`}
                   placeholder={t(
@@ -683,13 +683,13 @@ function VflzBetriebe({
                       : "schiessanlage.begruendungBewertungPlaceholder",
                   )}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value={`${model}.zentroid.coordinates`}>
+              </ModelContext>
+              <ModelContext value={`${model}.zentroid.coordinates`}>
                 <div className="grid grid-cols-2 gap-5">
                   <Input name={`${name}.${i1}.zentroid.coordinates.0`} />
                   <Input name={`${name}.${i1}.zentroid.coordinates.1`} />
                 </div>
-              </ModelContext.Provider>
+              </ModelContext>
             </>
           );
         }}
@@ -878,18 +878,18 @@ function VflzUnfaelle() {
                   );
                 }}
               </FieldArray>
-              <ModelContext.Provider value="Unfall.bemerkung">
+              <ModelContext value="Unfall.bemerkung">
                 <Textarea
                   name={`unfaelle.${i1}.bemerkung.bem`}
                   placeholder={t("unfall.bemerkungPlaceholder")}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value="Unfall.bemerkungDatenimport">
+              </ModelContext>
+              <ModelContext value="Unfall.bemerkungDatenimport">
                 <Textarea
                   name={`unfaelle.${i1}.bemerkungDatenimport.bem`}
                   placeholder={t("unfall.bemerkungDatenimportPlaceholder")}
                 />
-              </ModelContext.Provider>
+              </ModelContext>
             </>
           );
         }}
@@ -1056,17 +1056,15 @@ function VflzKinderspielplaetzeGruenflaechen() {
                   name={`kinderspielplaetzeGruenflaechen.${i1}.beurteilung`}
                 />
               </div>
-              <ModelContext.Provider
-                value={`KinderspielplatzGruenflaeche.bemerkung`}
-              >
+              <ModelContext value={`KinderspielplatzGruenflaeche.bemerkung`}>
                 <Textarea
                   name={`kinderspielplaetzeGruenflaechen.${i1}.bemerkung.bem`}
                   placeholder={t(
                     "kinderspielplatzGruenflaeche.bemerkungPlaceholder",
                   )}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider
+              </ModelContext>
+              <ModelContext
                 value={`KinderspielplatzGruenflaeche.bemerkungDatenimport`}
               >
                 <Textarea
@@ -1075,8 +1073,8 @@ function VflzKinderspielplaetzeGruenflaechen() {
                     "kinderspielplatzGruenflaeche.bemerkungDatenimportPlaceholder",
                   )}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider
+              </ModelContext>
+              <ModelContext
                 value={`KinderspielplatzGruenflaeche.begruendungBewertung`}
               >
                 <Textarea
@@ -1085,8 +1083,8 @@ function VflzKinderspielplaetzeGruenflaechen() {
                     "kinderspielplatzGruenflaeche.begruendungBewertungPlaceholder",
                   )}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider
+              </ModelContext>
+              <ModelContext
                 value={`KinderspielplatzGruenflaeche.zentroid.coordinates`}
               >
                 <div className="grid grid-cols-2 gap-5">
@@ -1097,7 +1095,7 @@ function VflzKinderspielplaetzeGruenflaechen() {
                     name={`kinderspielplaetzeGruenflaechen.${i1}.zentroid.coordinates.1`}
                   />
                 </div>
-              </ModelContext.Provider>
+              </ModelContext>
             </>
           );
         }}
@@ -1305,30 +1303,30 @@ function VflzPFAS() {
                 <CodeListbox name={`pfas.${i1}.untersuchungsStand`} />
                 <CodeListbox name={`pfas.${i1}.beurteilung`} />
               </div>
-              <ModelContext.Provider value={`PFAS.bemerkung`}>
+              <ModelContext value={`PFAS.bemerkung`}>
                 <Textarea
                   name={`pfas.${i1}.bemerkung.bem`}
                   placeholder={t("pfas.bemerkungPlaceholder")}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value="PFAS.bemerkungDatenimport">
+              </ModelContext>
+              <ModelContext value="PFAS.bemerkungDatenimport">
                 <Textarea
                   name={`pfas.${i1}.bemerkungDatenimport.bem`}
                   placeholder={t("pfas.bemerkungDatenimportPlaceholder")}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value="PFAS.begruendungBewertung">
+              </ModelContext>
+              <ModelContext value="PFAS.begruendungBewertung">
                 <Textarea
                   name={`pfas.${i1}.begruendungBewertung.bem`}
                   placeholder={t("pfas.begruendungBewertungPlaceholder")}
                 />
-              </ModelContext.Provider>
-              <ModelContext.Provider value="PFAS.zentroid.coordinates">
+              </ModelContext>
+              <ModelContext value="PFAS.zentroid.coordinates">
                 <div className="grid grid-cols-2 gap-5">
                   <Input name={`pfas.${i1}.zentroid.coordinates.0`} />
                   <Input name={`pfas.${i1}.zentroid.coordinates.1`} />
                 </div>
-              </ModelContext.Provider>
+              </ModelContext>
             </>
           );
         }}
@@ -1626,12 +1624,12 @@ function VflzUmwelt() {
       legend={t("vflz.data.umwelt")}
       mutationInfo={[getValues("bemerkungUmwelt.erfassungMutation")]}
     >
-      <ModelContext.Provider value="Vflz.bemerkungUmwelt">
+      <ModelContext value="Vflz.bemerkungUmwelt">
         <Textarea
           name="bemerkungUmwelt.bem"
           placeholder={t("vflz.bemerkungUmweltPlaceholder")}
         />
-      </ModelContext.Provider>
+      </ModelContext>
     </Fieldset>
   );
 }
@@ -1832,12 +1830,12 @@ function VflzUmweltschaeden() {
                 <CodeListbox name={`umweltschaeden.${i1}.artSchaden`} />
                 <CodeListbox name={`umweltschaeden.${i1}.schaeden`} />
               </div>
-              <ModelContext.Provider value="Umweltschaden.bemerkung">
+              <ModelContext value="Umweltschaden.bemerkung">
                 <Textarea
                   name={`umweltschaeden.${i1}.bemerkung.bem`}
                   placeholder={t("umweltschaeden.bemerkungPlaceholder")}
                 />
-              </ModelContext.Provider>
+              </ModelContext>
             </>
           );
         }}
@@ -1923,12 +1921,12 @@ function VflzEinzelereignisse() {
                 <DatePicker name={`einzelereignisse.${i1}.datum`} />
                 <CodeListbox name={`einzelereignisse.${i1}.einzelereignis`} />
               </div>
-              <ModelContext.Provider value="Einzelereignis.bemerkung">
+              <ModelContext value="Einzelereignis.bemerkung">
                 <Textarea
                   name={`einzelereignisse.${i1}.bemerkung.bem`}
                   placeholder={t("einzelereignisse.bemerkungPlaceholder")}
                 />
-              </ModelContext.Provider>
+              </ModelContext>
             </>
           );
         }}

@@ -52,7 +52,7 @@ describe("TaskDokument", () => {
       task,
     };
     cy.mount(<TaskDokument {...mockTaskProps} />, mountOptions);
-    cy.get('[data-test="Workflow-taskTitle"] input').should(
+    cy.get('[data-test="Workflow-taskTitle"] textarea').should(
       "have.value",
       "Neues Dokument",
     );
@@ -106,7 +106,7 @@ describe("TaskDokument", () => {
       task,
     };
     cy.mount(<TaskDokument {...mockTaskProps} />, mountOptions);
-    cy.get('[data-test="Workflow-taskTitle"] input').should(
+    cy.get('[data-test="Workflow-taskTitle"] textarea').should(
       "have.value",
       "Neues Dokument",
     );
@@ -123,7 +123,7 @@ describe("TaskDokument", () => {
       { force: true },
     );
     cy.get("label[for=file-upload]").contains("Ersetzen");
-    cy.get('[data-test="Workflow-taskTitle"] input').should(
+    cy.get('[data-test="Workflow-taskTitle"] textarea').should(
       "have.value",
       "test-file",
     );

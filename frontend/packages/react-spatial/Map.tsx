@@ -50,7 +50,7 @@ export default function Map({
   }, [map, target]);
 
   return (
-    <MapContext.Provider value={map}>
+    <MapContext value={map}>
       <div
         className={className}
         ref={(ref) => {
@@ -60,6 +60,6 @@ export default function Map({
       >
         {children}
       </div>
-    </MapContext.Provider>
+    </MapContext>
   );
 }

@@ -20,9 +20,5 @@ export default function Control({ children, control }: ControlProps) {
     };
   }, [control, olMap]);
 
-  return (
-    <ControlContext.Provider value={control}>
-      {children}
-    </ControlContext.Provider>
-  );
+  return <ControlContext value={control}>{children}</ControlContext>;
 }

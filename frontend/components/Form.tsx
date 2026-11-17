@@ -1,7 +1,7 @@
 import { captureException } from "@sentry/nextjs";
 import { gql } from "graphql-request";
 import { isObject } from "lodash";
-import { createContext, useContext, useState } from "react";
+import { createContext, use, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { useI18n } from "@/lib/i18n";
@@ -32,7 +32,7 @@ const ValidatedDataContext = createContext<{
 });
 
 export function useValidatedData() {
-  return useContext(ValidatedDataContext);
+  return use(ValidatedDataContext);
 }
 
 export type Props<T extends FieldValues> = PropsWithChildren<{
@@ -97,10 +97,8 @@ function Form<T extends FieldValues>({
 
   return (
     <FormProvider {...methods}>
-      <ModelContext.Provider value={model}>
-        <ValidatedDataContext.Provider
-          value={{ setValidatedData, validatedData }}
-        >
+      <ModelContext value={model}>
+        <ValidatedDataContext value={{ setValidatedData, validatedData }}>
           <form
             className={className}
             data-test={props["data-test"]}
@@ -123,8 +121,8 @@ function Form<T extends FieldValues>({
           >
             {children}
           </form>
-        </ValidatedDataContext.Provider>
-      </ModelContext.Provider>
+        </ValidatedDataContext>
+      </ModelContext>
       <Dialog
         data-test={
           errorType === "network" ? "Form-networkException" : "Form-exception"
